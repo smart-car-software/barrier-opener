@@ -17,4 +17,9 @@
   -->
 <resources>
     <dimen name="sectionPadding">16sp</dimen>
+
+    <!-- Clearance the barrier list keeps at its bottom so the last row's action button is never
+         parked under the "Add Barrier" FAB: the extended FAB's 56dp height plus its 20dp margin,
+         and 20dp of breathing room. -->
+    <dimen name="listBottomClearance">96dp</dimen>
 </resources>
