@@ -27,7 +27,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "barrieropener.db";
-    private static final int DATABASE_VERSION = 5; // Incremented version for action type / webhook
+    private static final int DATABASE_VERSION = 6; // Incremented version for the webhook secret
 
     // Table name
     private static final String TABLE_BARRIERS = "barriers";
@@ -44,6 +44,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_BARRIER_TYPE = "barrier_type";
     private static final String KEY_ACTION_TYPE = "action_type";
     private static final String KEY_WEBHOOK_URL = "webhook_url";
+    private static final String KEY_WEBHOOK_SECRET = "webhook_secret";
 
     // Create table SQL
     private static final String CREATE_TABLE_BARRIERS = "CREATE TABLE " + TABLE_BARRIERS +
@@ -57,14 +58,15 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_ZOOM_LEVEL + " REAL," +
             KEY_BARRIER_TYPE + " INTEGER," +
             KEY_ACTION_TYPE + " INTEGER DEFAULT 0," +
-            KEY_WEBHOOK_URL + " TEXT" +
+            KEY_WEBHOOK_URL + " TEXT," +
+            KEY_WEBHOOK_SECRET + " TEXT" +
             ")";
 
     /** Column order used by every read below; keeps cursor indices and the projection in sync. */
     private static final String[] COLUMNS = {
             KEY_ID, KEY_NAME, KEY_PHONE, KEY_LATITUDE, KEY_LONGITUDE, KEY_HEADING,
             KEY_DETECTION_RADIUS, KEY_ZOOM_LEVEL, KEY_BARRIER_TYPE, KEY_ACTION_TYPE,
-            KEY_WEBHOOK_URL
+            KEY_WEBHOOK_URL, KEY_WEBHOOK_SECRET
     };
 
     public DatabaseHelper(Context context) {
@@ -91,6 +93,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
                     KEY_WEBHOOK_URL + " TEXT");
         }
+        if (oldVersion < 6) {
+            // Migration to 6 - optional shared secret posted as the webhook's JSON body.
+            // Existing webhooks keep sending an empty body (NULL secret).
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_WEBHOOK_SECRET + " TEXT");
+        }
     }
 
     /** Fills the shared column set; used by both insert and update. */
@@ -106,6 +114,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(KEY_BARRIER_TYPE, barrier.getBarrierType().getValue());
         values.put(KEY_ACTION_TYPE, barrier.getActionType().getValue());
         values.put(KEY_WEBHOOK_URL, barrier.getWebhookUrl());
+        values.put(KEY_WEBHOOK_SECRET, barrier.getWebhookSecret());
         return values;
     }
 
@@ -125,6 +134,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         barrier.setBarrierType(Barrier.BarrierType.fromValue(cursor.getInt(8)));
         barrier.setActionType(Barrier.ActionType.fromValue(cursor.getInt(9)));
         barrier.setWebhookUrl(cursor.getString(10));
+        barrier.setWebhookSecret(cursor.getString(11));
         return barrier;
     }
 

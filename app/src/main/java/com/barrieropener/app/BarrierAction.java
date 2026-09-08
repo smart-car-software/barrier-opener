@@ -33,7 +33,7 @@ public final class BarrierAction {
             return;
         }
         if (barrier.getActionType() == Barrier.ActionType.WEBHOOK) {
-            WebhookHelper.sendRequest(context, barrier.getWebhookUrl());
+            WebhookHelper.sendRequest(context, barrier.getWebhookUrl(), barrier.getWebhookSecret());
         } else {
             CallHelper.placeCall(context, barrier.getPhoneNumber());
         }

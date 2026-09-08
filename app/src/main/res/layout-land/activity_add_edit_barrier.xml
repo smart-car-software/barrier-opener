@@ -141,6 +141,26 @@
                                 android:maxLines="1" />
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/webhookSecretInputLayout"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:visibility="gone"
+                            app:endIconMode="password_toggle"
+                            app:helperText="@string/hint_webhook_secret_helper"
+                            app:helperTextEnabled="true"
+                            android:hint="@string/hint_webhook_secret">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/editWebhookSecret"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="textPassword"
+                                android:maxLines="1" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"

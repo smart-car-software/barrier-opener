@@ -23,10 +23,15 @@ import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -45,10 +50,16 @@ import java.util.concurrent.Executors;
  *       entity_id: button.gate_open
  * </pre>
  *
- * The request is an empty-bodied POST, exactly what {@code curl -X POST <url>} sends, so any
- * endpoint that works with that curl line works here. It runs off the main thread (Android forbids
- * network I/O on it) and reports the outcome as a toast, because on a head unit the driver has no
- * other way to tell a silent failure from a barrier that simply hasn't moved yet.
+ * With no secret the request is an empty-bodied POST, exactly what {@code curl -X POST <url>}
+ * sends. With a secret it carries {@code {"secret": "..."}} as its JSON body, which is what an HA
+ * automation can actually check: a webhook trigger exposes only {@code trigger.json},
+ * {@code trigger.data} and {@code trigger.query} to templates — request headers are not available
+ * to them, so a header-borne secret could not be verified, and a query parameter would leak the
+ * secret into proxy logs and browser history along with the URL.
+ *
+ * It runs off the main thread (Android forbids network I/O on it) and reports the outcome as a
+ * toast, because on a head unit the driver has no other way to tell a silent failure from a
+ * barrier that simply hasn't moved yet.
  */
 public final class WebhookHelper {
     private static final String TAG = "WebhookHelper";
@@ -78,18 +89,21 @@ public final class WebhookHelper {
         }
     }
 
-    public static void sendRequest(Context context, String url) {
+    public static void sendRequest(Context context, String url, String secret) {
         Context appContext = context.getApplicationContext();
         if (!isValidUrl(url)) {
             Toast.makeText(appContext, R.string.error_webhook_invalid_url, Toast.LENGTH_LONG).show();
             return;
         }
         String target = url.trim();
+        // An absent secret is a legitimate configuration, not an error: plain webhooks that rely on
+        // the unguessable webhook_id alone keep working exactly as before.
+        final String body = buildBody(secret);
 
         Toast.makeText(appContext, R.string.webhook_sending, Toast.LENGTH_SHORT).show();
         EXECUTOR.execute(() -> {
             try {
-                int code = post(target);
+                int code = post(target, body);
                 if (code >= 200 && code < 300) {
                     toast(appContext, appContext.getString(R.string.webhook_success));
                 } else {
@@ -103,17 +117,42 @@ public final class WebhookHelper {
         });
     }
 
-    private static int post(String target) throws Exception {
+    /** {@code {"secret":"..."}} for a non-empty secret, else null meaning "send no body". */
+    private static String buildBody(String secret) {
+        if (secret == null || secret.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            // JSONObject, not string concatenation: a secret may contain quotes or backslashes that
+            // would otherwise produce a malformed body the automation silently fails to match.
+            return new JSONObject().put("secret", secret.trim()).toString();
+        } catch (JSONException e) {
+            // put() only throws on a null key, which cannot happen here.
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static int post(String target, String body) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(target).openConnection();
         try {
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setUseCaches(false);
-            // Empty body with an explicit Content-Length: 0, like `curl -X POST`.
             connection.setDoOutput(true);
-            connection.setFixedLengthStreamingMode(0);
-            connection.getOutputStream().close();
+
+            if (body == null) {
+                // Empty body with an explicit Content-Length: 0, like `curl -X POST`.
+                connection.setFixedLengthStreamingMode(0);
+                connection.getOutputStream().close();
+            } else {
+                byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                connection.setFixedLengthStreamingMode(bytes.length);
+                try (OutputStream out = connection.getOutputStream()) {
+                    out.write(bytes);
+                }
+            }
 
             int code = connection.getResponseCode();
             // Drain the response so the socket can be pooled instead of being torn down.

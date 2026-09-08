@@ -74,6 +74,8 @@
     <string name="hint_phone">Phone Number</string>
     <string name="hint_webhook_url">Request URL</string>
     <string name="hint_webhook_url_helper">POST is sent to this address, e.g. a Home Assistant webhook</string>
+    <string name="hint_webhook_secret">Secret (optional)</string>
+    <string name="hint_webhook_secret_helper">Sent in the request body as {"secret": "…"}. Leave empty if the automation does not check one.</string>
     <string name="hint_latitude">Latitude</string>
     <string name="hint_longitude">Longitude</string>
     <string name="label_detection_radius">Detection Radius</string>

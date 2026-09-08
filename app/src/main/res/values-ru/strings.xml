@@ -74,6 +74,8 @@
     <string name="hint_phone">Номер телефона</string>
     <string name="hint_webhook_url">Ссылка для запроса</string>
     <string name="hint_webhook_url_helper">На этот адрес отправляется POST, например webhook Home Assistant</string>
+    <string name="hint_webhook_secret">Секрет (необязательно)</string>
+    <string name="hint_webhook_secret_helper">Уходит в теле запроса как {"secret": "…"}. Оставьте пустым, если автоматизация его не проверяет.</string>
     <string name="hint_latitude">Широта</string>
     <string name="hint_longitude">Долгота</string>
     <string name="label_detection_radius">Радиус обнаружения</string>

@@ -69,8 +69,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private static final int MAX_HEADING = 359; // degrees (0 and 360 are equivalent)
     private static final int DEFAULT_HEADING = 0; // degrees
 
-    private EditText editName, editPhone, editWebhookUrl, editLatitude, editLongitude;
-    private View phoneInputLayout, webhookInputLayout;
+    private EditText editName, editPhone, editWebhookUrl, editWebhookSecret, editLatitude, editLongitude;
+    private View phoneInputLayout, webhookInputLayout, webhookSecretInputLayout;
     private MaterialButton actionCall, actionWebhook;
     private SeekBar seekRadius, seekHeading;
     private TextView textRadius, textHeading;
@@ -156,8 +156,10 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         editName = findViewById(R.id.editName);
         editPhone = findViewById(R.id.editPhone);
         editWebhookUrl = findViewById(R.id.editWebhookUrl);
+        editWebhookSecret = findViewById(R.id.editWebhookSecret);
         phoneInputLayout = findViewById(R.id.phoneInputLayout);
         webhookInputLayout = findViewById(R.id.webhookInputLayout);
+        webhookSecretInputLayout = findViewById(R.id.webhookSecretInputLayout);
         actionCall = findViewById(R.id.actionCall);
         actionWebhook = findViewById(R.id.actionWebhook);
         editLatitude = findViewById(R.id.editLatitude);
@@ -257,6 +259,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private void applyActionTypeVisibility(boolean isWebhook) {
         phoneInputLayout.setVisibility(isWebhook ? View.GONE : View.VISIBLE);
         webhookInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+        webhookSecretInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
     }
 
     private void changeZoomByStep(float value) {
@@ -336,6 +339,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             editName.setText(currentBarrier.getName());
             editPhone.setText(currentBarrier.getPhoneNumber());
             editWebhookUrl.setText(currentBarrier.getWebhookUrl());
+            editWebhookSecret.setText(currentBarrier.getWebhookSecret());
 
             boolean isWebhook = currentBarrier.getActionType() == Barrier.ActionType.WEBHOOK;
             (isWebhook ? actionWebhook : actionCall).setChecked(true);
@@ -492,6 +496,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         String name = editName.getText().toString().trim();
         String phone = editPhone.getText().toString().trim();
         String webhookUrl = editWebhookUrl.getText().toString().trim();
+        // Optional by design: a webhook guarded only by an unguessable webhook_id is a valid setup.
+        String webhookSecret = editWebhookSecret.getText().toString().trim();
         boolean isWebhook = actionWebhook.isChecked();
 
         if (name.isEmpty()) {
@@ -535,6 +541,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
                     actionType,
                     phone,
                     webhookUrl,
+                    webhookSecret,
                     selectedPoint.getLatitude(),
                     selectedPoint.getLongitude(),
                     heading,
@@ -551,6 +558,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             currentBarrier.setActionType(actionType);
             currentBarrier.setPhoneNumber(phone);
             currentBarrier.setWebhookUrl(webhookUrl);
+            currentBarrier.setWebhookSecret(webhookSecret);
             currentBarrier.setLatitude(selectedPoint.getLatitude());
             currentBarrier.setLongitude(selectedPoint.getLongitude());
             currentBarrier.setHeading(heading);

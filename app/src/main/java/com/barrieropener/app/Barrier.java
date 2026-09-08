@@ -73,6 +73,8 @@ public class Barrier {
     private String name;
     private String phoneNumber;
     private String webhookUrl;
+    /** Optional shared secret sent as the JSON body of the webhook POST. May be null/empty. */
+    private String webhookSecret;
     private ActionType actionType = ActionType.CALL;
     private double latitude;
     private double longitude;
@@ -87,17 +89,18 @@ public class Barrier {
 
     public Barrier(String name, String phoneNumber, double latitude, double longitude, 
                   double heading, double detectionRadius, float zoomLevel, BarrierType barrierType) {
-        this(name, ActionType.CALL, phoneNumber, null, latitude, longitude, heading,
+        this(name, ActionType.CALL, phoneNumber, null, null, latitude, longitude, heading,
                 detectionRadius, zoomLevel, barrierType);
     }
 
     public Barrier(String name, ActionType actionType, String phoneNumber, String webhookUrl,
-                  double latitude, double longitude, double heading, double detectionRadius,
-                  float zoomLevel, BarrierType barrierType) {
+                  String webhookSecret, double latitude, double longitude, double heading,
+                  double detectionRadius, float zoomLevel, BarrierType barrierType) {
         this.name = name;
         this.actionType = actionType;
         this.phoneNumber = phoneNumber;
         this.webhookUrl = webhookUrl;
+        this.webhookSecret = webhookSecret;
         this.latitude = latitude;
         this.longitude = longitude;
         this.heading = heading;
@@ -111,6 +114,7 @@ public class Barrier {
     public String getName() { return name; }
     public String getPhoneNumber() { return phoneNumber; }
     public String getWebhookUrl() { return webhookUrl; }
+    public String getWebhookSecret() { return webhookSecret; }
     public ActionType getActionType() { return actionType; }
     public double getLatitude() { return latitude; }
     public double getLongitude() { return longitude; }
@@ -124,6 +128,7 @@ public class Barrier {
     public void setName(String name) { this.name = name; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
+    public void setWebhookSecret(String webhookSecret) { this.webhookSecret = webhookSecret; }
     public void setActionType(ActionType actionType) { this.actionType = actionType; }
     public void setLatitude(double latitude) { this.latitude = latitude; }
     public void setLongitude(double longitude) { this.longitude = longitude; }
