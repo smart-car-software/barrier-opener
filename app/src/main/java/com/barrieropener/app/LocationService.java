@@ -189,22 +189,17 @@ public class LocationService extends Service {
             }
         }
 
+        // Only ids travel in the intent — the popup re-reads the barriers from the database, so
+        // whichever action (call or webhook) each one carries is always the current one.
         long[] ids = new long[nearby.size()];
-        String[] names = new String[nearby.size()];
-        String[] phones = new String[nearby.size()];
         for (int i = 0; i < nearby.size(); i++) {
             ids[i] = nearby.get(i).getId();
-            names[i] = nearby.get(i).getName();
-            phones[i] = nearby.get(i).getPhoneNumber();
         }
 
         Intent popupIntent = new Intent(this, BarrierPopupActivity.class);
         popupIntent.putExtra("barrier_id", primary.getId());
         popupIntent.putExtra("barrier_name", primary.getName());
-        popupIntent.putExtra("barrier_phone", primary.getPhoneNumber());
         popupIntent.putExtra("nearby_ids", ids);
-        popupIntent.putExtra("nearby_names", names);
-        popupIntent.putExtra("nearby_phones", phones);
         popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         return popupIntent;
     }
@@ -223,7 +218,7 @@ public class LocationService extends Service {
 
         Notification n = new NotificationCompat.Builder(this, POPUP_CHANNEL_ID)
                 .setContentTitle(getString(R.string.popup_title_window, barrier.getName()))
-                .setContentText(barrier.getPhoneNumber())
+                .setContentText(BarrierAction.describeTarget(barrier))
                 .setSmallIcon(R.drawable.ic_notification)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)

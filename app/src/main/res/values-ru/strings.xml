@@ -72,6 +72,8 @@
     <!-- Form Fields -->
     <string name="hint_name">Название</string>
     <string name="hint_phone">Номер телефона</string>
+    <string name="hint_webhook_url">Ссылка для запроса</string>
+    <string name="hint_webhook_url_helper">На этот адрес отправляется POST, например webhook Home Assistant</string>
     <string name="hint_latitude">Широта</string>
     <string name="hint_longitude">Долгота</string>
     <string name="label_detection_radius">Радиус обнаружения</string>
@@ -80,6 +82,8 @@
     <!-- Errors -->
     <string name="error_name_required">Требуется название</string>
     <string name="error_phone_required">Требуется номер телефона</string>
+    <string name="error_webhook_url_required">Требуется ссылка для запроса</string>
+    <string name="error_webhook_invalid_url">Введите корректный адрес http:// или https://</string>
     <string name="error_location_required">Пожалуйста, выберите местоположение на карте</string>
     <string name="error_saving_barrier">Ошибка сохранения шлагбаума: %1$s</string>
     <string name="error_call_permission_not_granted">Не дано разрешение на совершение звонков</string>
@@ -131,6 +135,16 @@
     <string name="bidirectional">Двусторонний</string>
     <string name="one_way">Односторонний</string>
     <string name="call">Звонок</string>
+    <string name="action_open">Открыть</string>
+
+    <!-- Способ открытия: звонок или HTTP-запрос -->
+    <string name="action_type">Способ открытия</string>
+    <string name="action_type_call">Звонок</string>
+    <string name="action_type_webhook">HTTP-запрос</string>
+    <string name="webhook_sending">Отправляем запрос…</string>
+    <string name="webhook_success">Запрос отправлен</string>
+    <string name="webhook_http_error">Запрос не прошёл: HTTP %1$d</string>
+    <string name="webhook_failed">Запрос не прошёл: %1$s</string>
 
     <!-- Permission flow -->
     <string name="permission_background_location_title">Требуется фоновое местоположение</string>
@@ -157,7 +171,7 @@
     <string name="menu_about">О приложении</string>
     <string name="about_fallback"><![CDATA[
         <p><b>Открыватель шлагбаумов</b><br>
-        Автоматически звонит шлагбауму при подъезде. Для головных устройств на Android.</p>
+        Автоматически открывает шлагбаум при подъезде — звонком на его номер или HTTP-запросом (например, webhook Home Assistant). Для головных устройств на Android.</p>
         <p><b>Автор</b><br>
         Dezz — Telegram <a href="https://t.me/DezzK">@DezzK</a></p>
         <p><b>Исходный код</b><br>

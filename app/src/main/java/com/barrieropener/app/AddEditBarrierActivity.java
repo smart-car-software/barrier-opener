@@ -69,7 +69,9 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private static final int MAX_HEADING = 359; // degrees (0 and 360 are equivalent)
     private static final int DEFAULT_HEADING = 0; // degrees
 
-    private EditText editName, editPhone, editLatitude, editLongitude;
+    private EditText editName, editPhone, editWebhookUrl, editLatitude, editLongitude;
+    private View phoneInputLayout, webhookInputLayout;
+    private MaterialButton actionCall, actionWebhook;
     private SeekBar seekRadius, seekHeading;
     private TextView textRadius, textHeading;
     private MaterialButton radioBidirectional, radioOneWay;
@@ -153,6 +155,11 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private void initViews() {
         editName = findViewById(R.id.editName);
         editPhone = findViewById(R.id.editPhone);
+        editWebhookUrl = findViewById(R.id.editWebhookUrl);
+        phoneInputLayout = findViewById(R.id.phoneInputLayout);
+        webhookInputLayout = findViewById(R.id.webhookInputLayout);
+        actionCall = findViewById(R.id.actionCall);
+        actionWebhook = findViewById(R.id.actionWebhook);
         editLatitude = findViewById(R.id.editLatitude);
         editLongitude = findViewById(R.id.editLongitude);
         seekRadius = findViewById(R.id.seekRadius);
@@ -162,6 +169,14 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         radioBidirectional = findViewById(R.id.radioBidirectional);
         radioOneWay = findViewById(R.id.radioOneWay);
         headingContainer = findViewById(R.id.headingContainer);
+
+        // Call vs. HTTP request: only the field belonging to the selected action stays visible,
+        // so the form never asks for a phone number a webhook barrier doesn't have.
+        MaterialButtonToggleGroup toggleActionType = findViewById(R.id.toggleActionType);
+        toggleActionType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            applyActionTypeVisibility(checkedId == R.id.actionWebhook);
+        });
 
         // Set up barrier type toggle group listener
         MaterialButtonToggleGroup radioBarrierType = findViewById(R.id.radioBarrierType);
@@ -237,6 +252,11 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
         // Primary "Save" action — large bottom button replaces the toolbar diskette icon.
         findViewById(R.id.btnSave).setOnClickListener(v -> saveBarrier());
+    }
+
+    private void applyActionTypeVisibility(boolean isWebhook) {
+        phoneInputLayout.setVisibility(isWebhook ? View.GONE : View.VISIBLE);
+        webhookInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
     }
 
     private void changeZoomByStep(float value) {
@@ -315,6 +335,11 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         if (currentBarrier != null) {
             editName.setText(currentBarrier.getName());
             editPhone.setText(currentBarrier.getPhoneNumber());
+            editWebhookUrl.setText(currentBarrier.getWebhookUrl());
+
+            boolean isWebhook = currentBarrier.getActionType() == Barrier.ActionType.WEBHOOK;
+            (isWebhook ? actionWebhook : actionCall).setChecked(true);
+            applyActionTypeVisibility(isWebhook);
 
             selectedPoint = new Point(currentBarrier.getLatitude(), currentBarrier.getLongitude());
             updateLocationFields();
@@ -466,6 +491,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private void saveBarrier() {
         String name = editName.getText().toString().trim();
         String phone = editPhone.getText().toString().trim();
+        String webhookUrl = editWebhookUrl.getText().toString().trim();
+        boolean isWebhook = actionWebhook.isChecked();
 
         if (name.isEmpty()) {
             editName.setError(getString(R.string.error_name_required));
@@ -473,7 +500,18 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             return;
         }
 
-        if (phone.isEmpty()) {
+        if (isWebhook) {
+            if (webhookUrl.isEmpty()) {
+                editWebhookUrl.setError(getString(R.string.error_webhook_url_required));
+                editWebhookUrl.requestFocus();
+                return;
+            }
+            if (!WebhookHelper.isValidUrl(webhookUrl)) {
+                editWebhookUrl.setError(getString(R.string.error_webhook_invalid_url));
+                editWebhookUrl.requestFocus();
+                return;
+            }
+        } else if (phone.isEmpty()) {
             editPhone.setError(getString(R.string.error_phone_required));
             editPhone.requestFocus();
             return;
@@ -486,13 +524,17 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
         boolean isOneWay = radioOneWay.isChecked();
         double heading = isOneWay ? seekHeading.getProgress() : 0;
+        Barrier.ActionType actionType =
+                isWebhook ? Barrier.ActionType.WEBHOOK : Barrier.ActionType.CALL;
 
         float currentZoom = map.getCameraPosition().getZoom();
 
         if (currentBarrier == null) {
             currentBarrier = new Barrier(
                     name,
+                    actionType,
                     phone,
+                    webhookUrl,
                     selectedPoint.getLatitude(),
                     selectedPoint.getLongitude(),
                     heading,
@@ -506,7 +548,9 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             Toast.makeText(this, R.string.barrier_added, Toast.LENGTH_SHORT).show();
         } else {
             currentBarrier.setName(name);
+            currentBarrier.setActionType(actionType);
             currentBarrier.setPhoneNumber(phone);
+            currentBarrier.setWebhookUrl(webhookUrl);
             currentBarrier.setLatitude(selectedPoint.getLatitude());
             currentBarrier.setLongitude(selectedPoint.getLongitude());
             currentBarrier.setHeading(heading);

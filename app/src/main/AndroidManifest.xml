@@ -42,9 +42,15 @@
     <uses-feature android:name="android.hardware.location.network" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!--
+      usesCleartextTraffic: barrier webhooks usually point at a home-network address
+      (http://192.168.x.x:8123/api/webhook/…), which Android 9+ blocks by default. HTTPS is still
+      preferred and works unchanged; this only unblocks the plain-HTTP LAN case.
+    -->
     <application
         android:name=".BarrierOpenerApp"
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"

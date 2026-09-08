@@ -27,7 +27,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "barrieropener.db";
-    private static final int DATABASE_VERSION = 4; // Incremented version for barrier type
+    private static final int DATABASE_VERSION = 5; // Incremented version for action type / webhook
 
     // Table name
     private static final String TABLE_BARRIERS = "barriers";
@@ -42,6 +42,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_DETECTION_RADIUS = "detection_radius";
     private static final String KEY_ZOOM_LEVEL = "zoom_level";
     private static final String KEY_BARRIER_TYPE = "barrier_type";
+    private static final String KEY_ACTION_TYPE = "action_type";
+    private static final String KEY_WEBHOOK_URL = "webhook_url";
 
     // Create table SQL
     private static final String CREATE_TABLE_BARRIERS = "CREATE TABLE " + TABLE_BARRIERS +
@@ -53,8 +55,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_HEADING + " REAL," +
             KEY_DETECTION_RADIUS + " REAL," +
             KEY_ZOOM_LEVEL + " REAL," +
-            KEY_BARRIER_TYPE + " INTEGER" +
+            KEY_BARRIER_TYPE + " INTEGER," +
+            KEY_ACTION_TYPE + " INTEGER DEFAULT 0," +
+            KEY_WEBHOOK_URL + " TEXT" +
             ")";
+
+    /** Column order used by every read below; keeps cursor indices and the projection in sync. */
+    private static final String[] COLUMNS = {
+            KEY_ID, KEY_NAME, KEY_PHONE, KEY_LATITUDE, KEY_LONGITUDE, KEY_HEADING,
+            KEY_DETECTION_RADIUS, KEY_ZOOM_LEVEL, KEY_BARRIER_TYPE, KEY_ACTION_TYPE,
+            KEY_WEBHOOK_URL
+    };
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -72,98 +83,95 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
                     KEY_BARRIER_TYPE + " INTEGER DEFAULT 0"); // 0 = BIDIRECTIONAL
         }
+        if (oldVersion < 5) {
+            // Migration to 5 - how the barrier is opened: phone call or HTTP webhook.
+            // Existing rows keep dialling their phone number (0 = CALL).
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_ACTION_TYPE + " INTEGER DEFAULT 0");
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_WEBHOOK_URL + " TEXT");
+        }
+    }
+
+    /** Fills the shared column set; used by both insert and update. */
+    private static ContentValues toValues(Barrier barrier) {
+        ContentValues values = new ContentValues();
+        values.put(KEY_NAME, barrier.getName());
+        values.put(KEY_PHONE, barrier.getPhoneNumber());
+        values.put(KEY_LATITUDE, barrier.getLatitude());
+        values.put(KEY_LONGITUDE, barrier.getLongitude());
+        values.put(KEY_HEADING, barrier.getHeading());
+        values.put(KEY_DETECTION_RADIUS, barrier.getDetectionRadius());
+        values.put(KEY_ZOOM_LEVEL, barrier.getZoomLevel());
+        values.put(KEY_BARRIER_TYPE, barrier.getBarrierType().getValue());
+        values.put(KEY_ACTION_TYPE, barrier.getActionType().getValue());
+        values.put(KEY_WEBHOOK_URL, barrier.getWebhookUrl());
+        return values;
+    }
+
+    /** Reads a barrier from a cursor positioned on a row selected with {@link #COLUMNS}. */
+    private static Barrier fromCursor(Cursor cursor) {
+        Barrier barrier = new Barrier();
+        barrier.setId(cursor.getLong(0));
+        barrier.setName(cursor.getString(1));
+        barrier.setPhoneNumber(cursor.getString(2));
+        barrier.setLatitude(cursor.getDouble(3));
+        barrier.setLongitude(cursor.getDouble(4));
+        barrier.setHeading(cursor.getDouble(5));
+        barrier.setDetectionRadius(cursor.getDouble(6));
+        if (!cursor.isNull(7)) {
+            barrier.setZoomLevel(cursor.getFloat(7));
+        }
+        barrier.setBarrierType(Barrier.BarrierType.fromValue(cursor.getInt(8)));
+        barrier.setActionType(Barrier.ActionType.fromValue(cursor.getInt(9)));
+        barrier.setWebhookUrl(cursor.getString(10));
+        return barrier;
     }
 
     // Add a new barrier
     public long addBarrier(Barrier barrier) {
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(KEY_NAME, barrier.getName());
-        values.put(KEY_PHONE, barrier.getPhoneNumber());
-        values.put(KEY_LATITUDE, barrier.getLatitude());
-        values.put(KEY_LONGITUDE, barrier.getLongitude());
-        values.put(KEY_HEADING, barrier.getHeading());
-        values.put(KEY_DETECTION_RADIUS, barrier.getDetectionRadius());
-        values.put(KEY_ZOOM_LEVEL, barrier.getZoomLevel());
-        values.put(KEY_BARRIER_TYPE, barrier.getBarrierType().getValue());
-
-        return db.insert(TABLE_BARRIERS, null, values);
+        return db.insert(TABLE_BARRIERS, null, toValues(barrier));
     }
 
     // Get a single barrier
     public Barrier getBarrier(long id) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_BARRIERS,
-                new String[]{KEY_ID, KEY_NAME, KEY_PHONE, KEY_LATITUDE, KEY_LONGITUDE,
-                        KEY_HEADING, KEY_DETECTION_RADIUS, KEY_ZOOM_LEVEL, KEY_BARRIER_TYPE},
-                KEY_ID + "=?",
+        Cursor cursor = db.query(TABLE_BARRIERS, COLUMNS, KEY_ID + "=?",
                 new String[]{String.valueOf(id)}, null, null, null, null);
 
-        if (cursor != null && cursor.moveToFirst()) {
-            Barrier barrier = new Barrier(
-                    cursor.getString(1),  // name
-                    cursor.getString(2),  // phone
-                    cursor.getDouble(3),  // latitude
-                    cursor.getDouble(4),  // longitude
-                    cursor.getDouble(5),  // heading
-                    cursor.getDouble(6),  // detectionRadius
-                    cursor.getFloat(7),   // zoomLevel
-                    Barrier.BarrierType.fromValue(cursor.getInt(8)) // barrierType
-            );
-            barrier.setId(cursor.getLong(0));
-            cursor.close();
-            return barrier;
+        if (cursor == null) {
+            return null;
         }
-        if (cursor != null) {
+        try {
+            return cursor.moveToFirst() ? fromCursor(cursor) : null;
+        } finally {
             cursor.close();
         }
-        return null;
     }
 
     // Update a barrier
     public int updateBarrier(Barrier barrier) {
         SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(KEY_NAME, barrier.getName());
-        values.put(KEY_PHONE, barrier.getPhoneNumber());
-        values.put(KEY_LATITUDE, barrier.getLatitude());
-        values.put(KEY_LONGITUDE, barrier.getLongitude());
-        values.put(KEY_HEADING, barrier.getHeading());
-        values.put(KEY_DETECTION_RADIUS, barrier.getDetectionRadius());
-        values.put(KEY_ZOOM_LEVEL, barrier.getZoomLevel());
-        values.put(KEY_BARRIER_TYPE, barrier.getBarrierType().getValue());
-
-        return db.update(TABLE_BARRIERS, values, KEY_ID + " = ?",
+        return db.update(TABLE_BARRIERS, toValues(barrier), KEY_ID + " = ?",
                 new String[]{String.valueOf(barrier.getId())});
     }
 
     // Get all barriers
     public List<Barrier> getAllBarriers() {
         List<Barrier> barriers = new ArrayList<>();
-        String selectQuery = "SELECT * FROM " + TABLE_BARRIERS;
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.rawQuery(selectQuery, null);
+        Cursor cursor = db.query(TABLE_BARRIERS, COLUMNS, null, null, null, null, null);
 
-        if (cursor.moveToFirst()) {
-            do {
-                Barrier barrier = new Barrier();
-                barrier.setId(cursor.getLong(0));
-                barrier.setName(cursor.getString(1));
-                barrier.setPhoneNumber(cursor.getString(2));
-                barrier.setLatitude(cursor.getDouble(3));
-                barrier.setLongitude(cursor.getDouble(4));
-                barrier.setHeading(cursor.getDouble(5));
-                barrier.setDetectionRadius(cursor.getDouble(6));
-                if (cursor.getColumnIndex(KEY_ZOOM_LEVEL) != -1) {
-                    barrier.setZoomLevel(cursor.getFloat(7));
-                }
-                if (cursor.getColumnIndex(KEY_BARRIER_TYPE) != -1) {
-                    barrier.setBarrierType(Barrier.BarrierType.fromValue(cursor.getInt(8)));
-                }
-                barriers.add(barrier);
-            } while (cursor.moveToNext());
+        try {
+            if (cursor.moveToFirst()) {
+                do {
+                    barriers.add(fromCursor(cursor));
+                } while (cursor.moveToNext());
+            }
+        } finally {
+            cursor.close();
         }
-        cursor.close();
         return barriers;
     }
 

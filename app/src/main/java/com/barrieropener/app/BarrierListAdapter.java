@@ -23,11 +23,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+
+import com.google.android.material.button.MaterialButton;
 
 import java.util.List;
 import java.util.Locale;
@@ -80,9 +81,9 @@ public class BarrierListAdapter extends BaseAdapter {
         if (convertView == null) {
             convertView = inflater.inflate(R.layout.item_barrier, parent, false);
             holder = new ViewHolder();
-            holder.callButton = convertView.findViewById(R.id.callButton);
+            holder.actionButton = convertView.findViewById(R.id.callButton);
             holder.nameText = convertView.findViewById(R.id.textBarrierName);
-            holder.phoneText = convertView.findViewById(R.id.textBarrierPhone);
+            holder.targetText = convertView.findViewById(R.id.textBarrierPhone);
             holder.locationText = convertView.findViewById(R.id.textBarrierLocation);
             holder.typeText = convertView.findViewById(R.id.textBarrierType);
             convertView.setTag(holder);
@@ -92,7 +93,7 @@ public class BarrierListAdapter extends BaseAdapter {
 
         Barrier barrier = barriers.get(position);
         holder.nameText.setText(barrier.getName());
-        holder.phoneText.setText(barrier.getPhoneNumber());
+        holder.targetText.setText(BarrierAction.describeTarget(barrier));
         holder.locationText.setText(String.format(Locale.getDefault(),
                 context.getString(R.string.location_format),
                 barrier.getLatitude(),
@@ -104,8 +105,12 @@ public class BarrierListAdapter extends BaseAdapter {
             holder.typeText.setText(R.string.barrier_type_bidirectional);
         }
 
-        holder.callButton.setOnClickListener(v ->
-                CallHelper.placeCall(context, barrier.getPhoneNumber()));
+        boolean isWebhook = barrier.getActionType() == Barrier.ActionType.WEBHOOK;
+        holder.actionButton.setIconResource(
+                isWebhook ? R.drawable.ic_webhook : android.R.drawable.ic_menu_call);
+        holder.actionButton.setContentDescription(
+                context.getString(isWebhook ? R.string.action_open : R.string.call));
+        holder.actionButton.setOnClickListener(v -> BarrierAction.trigger(context, barrier));
 
         convertView.setOnClickListener((view) -> {
             Intent intent = new Intent(context, AddEditBarrierActivity.class);
@@ -133,9 +138,9 @@ public class BarrierListAdapter extends BaseAdapter {
     }
 
     private static class ViewHolder {
-        Button callButton;
+        MaterialButton actionButton;
         TextView nameText;
-        TextView phoneText;
+        TextView targetText;
         TextView locationText;
         TextView typeText;
     }

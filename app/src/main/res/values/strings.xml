@@ -72,6 +72,8 @@
     <!-- Form Fields -->
     <string name="hint_name">Name</string>
     <string name="hint_phone">Phone Number</string>
+    <string name="hint_webhook_url">Request URL</string>
+    <string name="hint_webhook_url_helper">POST is sent to this address, e.g. a Home Assistant webhook</string>
     <string name="hint_latitude">Latitude</string>
     <string name="hint_longitude">Longitude</string>
     <string name="label_detection_radius">Detection Radius</string>
@@ -80,6 +82,8 @@
     <!-- Errors -->
     <string name="error_name_required">Name is required</string>
     <string name="error_phone_required">Phone number is required</string>
+    <string name="error_webhook_url_required">Request URL is required</string>
+    <string name="error_webhook_invalid_url">Enter a valid http:// or https:// address</string>
     <string name="error_location_required">Please select a location on the map</string>
     <string name="error_saving_barrier">Error saving barrier: %1$s</string>
     <string name="error_call_permission_not_granted">Call permission not granted</string>
@@ -131,6 +135,16 @@
     <string name="bidirectional">Bidirectional</string>
     <string name="one_way">One Way</string>
     <string name="call">Call</string>
+    <string name="action_open">Open</string>
+
+    <!-- Open action: phone call or HTTP request -->
+    <string name="action_type">Opening method</string>
+    <string name="action_type_call">Call</string>
+    <string name="action_type_webhook">HTTP request</string>
+    <string name="webhook_sending">Sending request…</string>
+    <string name="webhook_success">Request sent</string>
+    <string name="webhook_http_error">Request failed: HTTP %1$d</string>
+    <string name="webhook_failed">Request failed: %1$s</string>
 
     <!-- Permission flow -->
     <string name="permission_background_location_title">Background location required</string>
@@ -158,7 +172,7 @@
     <string name="about_url" translatable="false">https://dezzk.github.io/barrier-opener/</string>
     <string name="about_fallback"><![CDATA[
         <p><b>Barrier Opener</b><br>
-        Calls the barrier phone number automatically when you approach it. Designed for Android car head units.</p>
+        Opens the barrier automatically when you approach it — by calling its phone number or by sending an HTTP request (e.g. a Home Assistant webhook). Designed for Android car head units.</p>
         <p><b>Author</b><br>
         Dezz — Telegram <a href="https://t.me/DezzK">@DezzK</a></p>
         <p><b>Source code</b><br>

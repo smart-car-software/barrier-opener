@@ -56,13 +56,12 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private CountDownTimer countdown;
 
     private String barrierName;
-    private String phoneNumber;
     private long primaryId = -1;
-    private String[] nearbyNames;
-    private String[] nearbyPhones;
+    private Barrier primaryBarrier;
+    private long[] nearbyIds;
 
-    /** Snapshot of all barriers, loaded once; used to recompute the in-zone list live. */
-    private List<Barrier> allBarriers;
+    /** Snapshot of all barriers; used to resolve ids and to recompute the in-zone list live. */
+    private List<Barrier> allBarriers = new ArrayList<>();
     private LocationManager popupLocationManager;
     private String lastNearbySignature;
 
@@ -105,6 +104,9 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     private void bindFromIntent() {
         long previousPrimaryId = primaryId;
+        // Reload before resolving ids: the popup can be re-delivered long after it first appeared,
+        // and the user may have edited a barrier's action in the meantime.
+        loadBarriers();
         getIntentData();
         boolean primaryChanged = primaryId != previousPrimaryId;
 
@@ -189,10 +191,38 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void getIntentData() {
         Intent intent = getIntent();
         barrierName = intent.getStringExtra("barrier_name");
-        phoneNumber = intent.getStringExtra("barrier_phone");
         primaryId = intent.getLongExtra("barrier_id", -1);
-        nearbyNames = intent.getStringArrayExtra("nearby_names");
-        nearbyPhones = intent.getStringArrayExtra("nearby_phones");
+        nearbyIds = intent.getLongArrayExtra("nearby_ids");
+        primaryBarrier = findBarrier(primaryId);
+    }
+
+    private void loadBarriers() {
+        DatabaseHelper db = new DatabaseHelper(this);
+        allBarriers = db.getAllBarriers();
+        db.close();
+    }
+
+    private Barrier findBarrier(long id) {
+        for (Barrier b : allBarriers) {
+            if (b.getId() == id) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    /** Resolves the ids the service handed us into live barrier records. */
+    private List<Barrier> resolve(long[] ids) {
+        List<Barrier> resolved = new ArrayList<>();
+        if (ids != null) {
+            for (long id : ids) {
+                Barrier b = findBarrier(id);
+                if (b != null) {
+                    resolved.add(b);
+                }
+            }
+        }
+        return resolved;
     }
 
     /**
@@ -201,18 +231,12 @@ public class BarrierPopupActivity extends AppCompatActivity {
      * will show up as soon as we cross into its zone.
      */
     private void startLocationTracking() {
-        DatabaseHelper db = new DatabaseHelper(this);
-        allBarriers = db.getAllBarriers();
-        db.close();
         popupLocationManager = new LocationManager(this);
         popupLocationManager.startLocationUpdates(popupLocationCallback);
     }
 
     /** Recomputes the in-zone list from the current location and re-renders if it changed. */
     private void recomputeNearby(Location location) {
-        if (allBarriers == null) {
-            return;
-        }
         List<Barrier> inZone = new ArrayList<>();
         for (Barrier b : allBarriers) {
             if (b.getId() == primaryId) {
@@ -223,19 +247,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             }
         }
         inZone.sort((a, b) -> Double.compare(distanceTo(location, a), distanceTo(location, b)));
-
-        String[] names = new String[inZone.size()];
-        String[] phones = new String[inZone.size()];
-        long[] ids = new long[inZone.size()];
-        for (int i = 0; i < inZone.size(); i++) {
-            names[i] = inZone.get(i).getName();
-            phones[i] = inZone.get(i).getPhoneNumber();
-            ids[i] = inZone.get(i).getId();
-        }
-        // Signature keyed on the SET of ids (order-independent) so GPS jitter that merely reorders
-        // equidistant rows doesn't tear down and re-inflate the list (which would flicker and could
-        // swallow an in-progress tap on a call button). Only a membership change rebuilds.
-        renderNearby(names, phones, idSetSignature(ids));
+        renderNearby(inZone);
     }
 
     private static float distanceTo(Location location, Barrier barrier) {
@@ -245,25 +257,34 @@ public class BarrierPopupActivity extends AppCompatActivity {
         return d[0];
     }
 
-    private static String idSetSignature(long[] ids) {
-        long[] sorted = ids.clone();
-        java.util.Arrays.sort(sorted);
+    /**
+     * Keyed on the SET of ids (order-independent) so GPS jitter that merely reorders equidistant
+     * rows doesn't tear down and re-inflate the list (which would flicker and could swallow an
+     * in-progress tap on an open button). Only a membership change rebuilds.
+     */
+    private static String signatureOf(List<Barrier> barriers) {
+        long[] ids = new long[barriers.size()];
+        for (int i = 0; i < barriers.size(); i++) {
+            ids[i] = barriers.get(i).getId();
+        }
+        java.util.Arrays.sort(ids);
         StringBuilder sb = new StringBuilder("id");
-        for (long id : sorted) sb.append(id).append(',');
+        for (long id : ids) sb.append(id).append(',');
         return sb.toString();
     }
 
     /** Renders the nearby list from the intent extras (initial paint before the first fix). */
     private void buildNearbyList() {
-        renderNearby(nearbyNames, nearbyPhones, nearbySignature(nearbyNames, nearbyPhones));
+        renderNearby(resolve(nearbyIds));
     }
 
     /**
      * Renders the "also in range" list: every barrier whose zone the car is inside, regardless of
-     * direction, each with its own call button. Skips the rebuild when the set is unchanged so the
+     * direction, each with its own open button. Skips the rebuild when the set is unchanged so the
      * per-second location updates don't flicker the rows or steal a tap mid-press.
      */
-    private void renderNearby(String[] names, String[] phones, String signature) {
+    private void renderNearby(List<Barrier> barriers) {
+        String signature = signatureOf(barriers);
         if (signature.equals(lastNearbySignature)) {
             return;
         }
@@ -274,7 +295,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         LinearLayout container = findViewById(R.id.nearbyContainer);
         container.removeAllViews();
 
-        if (names == null || names.length == 0) {
+        if (barriers.isEmpty()) {
             divider.setVisibility(View.GONE);
             header.setVisibility(View.GONE);
             container.setVisibility(View.GONE);
@@ -286,31 +307,20 @@ public class BarrierPopupActivity extends AppCompatActivity {
         container.setVisibility(View.VISIBLE);
 
         LayoutInflater inflater = LayoutInflater.from(this);
-        for (int i = 0; i < names.length; i++) {
+        for (final Barrier barrier : barriers) {
             View row = inflater.inflate(R.layout.item_popup_nearby, container, false);
             TextView name = row.findViewById(R.id.nearbyName);
-            Button call = row.findViewById(R.id.nearbyCall);
+            Button open = row.findViewById(R.id.nearbyCall);
 
-            name.setText(names[i]);
-            final String phone = (phones != null && i < phones.length) ? phones[i] : null;
-            call.setOnClickListener(v -> {
-                placeCall(phone);
+            name.setText(barrier.getName());
+            open.setText(barrier.getActionType() == Barrier.ActionType.WEBHOOK
+                    ? R.string.action_open : R.string.call);
+            open.setOnClickListener(v -> {
+                BarrierAction.trigger(this, barrier);
                 dismissPopup();
             });
             container.addView(row);
         }
-    }
-
-    private static String nearbySignature(String[] names, String[] phones) {
-        StringBuilder sb = new StringBuilder();
-        if (names != null) {
-            for (String n : names) sb.append(n).append('\u001F');
-        }
-        sb.append('\u001E');
-        if (phones != null) {
-            for (String p : phones) sb.append(p).append('\u001F');
-        }
-        return sb.toString();
     }
 
     private void updateUI() {
@@ -370,12 +380,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     }
 
     private void openBarrier() {
-        placeCall(phoneNumber);
+        BarrierAction.trigger(this, primaryBarrier);
         dismissPopup();
-    }
-
-    private void placeCall(String phone) {
-        CallHelper.placeCall(this, phone);
     }
 
     private void dismissPopup() {
