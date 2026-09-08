@@ -68,9 +68,16 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private static final int DEFAULT_RADIUS = 50; // meters
     private static final int MAX_HEADING = 359; // degrees (0 and 360 are equivalent)
     private static final int DEFAULT_HEADING = 0; // degrees
+    private static final int MIN_CLOSE_DELAY_MIN = 1;
+    private static final int MAX_CLOSE_DELAY_MIN = 30;
 
     private EditText editName, editPhone, editWebhookUrl, editWebhookSecret, editLatitude, editLongitude;
+    private EditText editCloseUrl, editCloseSecret;
     private View phoneInputLayout, webhookInputLayout, webhookSecretInputLayout;
+    private View closeSection, closeDelayContainer;
+    private com.google.android.material.materialswitch.MaterialSwitch switchCloseOnDeparture, switchCloseOnTimer;
+    private SeekBar seekCloseDelay;
+    private TextView textCloseDelay;
     private MaterialButton actionCall, actionWebhook;
     private SeekBar seekRadius, seekHeading;
     private TextView textRadius, textHeading;
@@ -162,6 +169,37 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         webhookSecretInputLayout = findViewById(R.id.webhookSecretInputLayout);
         actionCall = findViewById(R.id.actionCall);
         actionWebhook = findViewById(R.id.actionWebhook);
+        closeSection = findViewById(R.id.closeSection);
+        closeDelayContainer = findViewById(R.id.closeDelayContainer);
+        switchCloseOnDeparture = findViewById(R.id.switchCloseOnDeparture);
+        switchCloseOnTimer = findViewById(R.id.switchCloseOnTimer);
+        seekCloseDelay = findViewById(R.id.seekCloseDelay);
+        textCloseDelay = findViewById(R.id.textCloseDelay);
+        editCloseUrl = findViewById(R.id.editCloseUrl);
+        editCloseSecret = findViewById(R.id.editCloseSecret);
+
+        seekCloseDelay.setMax(MAX_CLOSE_DELAY_MIN - MIN_CLOSE_DELAY_MIN);
+        seekCloseDelay.setProgress(Barrier.DEFAULT_CLOSE_DELAY_MINUTES - MIN_CLOSE_DELAY_MIN);
+        textCloseDelay.setText(getString(R.string.duration_minutes,
+                Barrier.DEFAULT_CLOSE_DELAY_MINUTES));
+        seekCloseDelay.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                textCloseDelay.setText(getString(R.string.duration_minutes,
+                        progress + MIN_CLOSE_DELAY_MIN));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        // The delay only means something for the timer trigger, so it follows that switch.
+        switchCloseOnTimer.setOnCheckedChangeListener((v, checked) ->
+                closeDelayContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
         editLatitude = findViewById(R.id.editLatitude);
         editLongitude = findViewById(R.id.editLongitude);
         seekRadius = findViewById(R.id.seekRadius);
@@ -256,10 +294,25 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         findViewById(R.id.btnSave).setOnClickListener(v -> saveBarrier());
     }
 
+    /**
+     * Copies the closing block onto the barrier. Set through setters rather than the constructor
+     * so the constructor doesn't grow a tail of optional arguments nobody can read at a glance.
+     */
+    private void applyClosingSettings(Barrier barrier, String closeUrl, String closeSecret) {
+        barrier.setCloseOnDeparture(switchCloseOnDeparture.isChecked());
+        barrier.setCloseOnTimer(switchCloseOnTimer.isChecked());
+        barrier.setCloseDelayMinutes(seekCloseDelay.getProgress() + MIN_CLOSE_DELAY_MIN);
+        barrier.setCloseUrl(closeUrl);
+        barrier.setCloseSecret(closeSecret);
+    }
+
     private void applyActionTypeVisibility(boolean isWebhook) {
         phoneInputLayout.setVisibility(isWebhook ? View.GONE : View.VISIBLE);
         webhookInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
         webhookSecretInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+        // Closing is a request too, so it is offered only where opening is one: a GSM barrier's
+        // repeat call is a toggle whose effect we cannot predict.
+        closeSection.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
     }
 
     private void changeZoomByStep(float value) {
@@ -340,6 +393,16 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             editPhone.setText(currentBarrier.getPhoneNumber());
             editWebhookUrl.setText(currentBarrier.getWebhookUrl());
             editWebhookSecret.setText(currentBarrier.getWebhookSecret());
+            editCloseUrl.setText(currentBarrier.getCloseUrl());
+            editCloseSecret.setText(currentBarrier.getCloseSecret());
+            switchCloseOnDeparture.setChecked(currentBarrier.isCloseOnDeparture());
+            switchCloseOnTimer.setChecked(currentBarrier.isCloseOnTimer());
+            int delay = Math.max(MIN_CLOSE_DELAY_MIN,
+                    Math.min(MAX_CLOSE_DELAY_MIN, currentBarrier.getCloseDelayMinutes()));
+            seekCloseDelay.setProgress(delay - MIN_CLOSE_DELAY_MIN);
+            textCloseDelay.setText(getString(R.string.duration_minutes, delay));
+            closeDelayContainer.setVisibility(
+                    currentBarrier.isCloseOnTimer() ? View.VISIBLE : View.GONE);
 
             boolean isWebhook = currentBarrier.getActionType() == Barrier.ActionType.WEBHOOK;
             (isWebhook ? actionWebhook : actionCall).setChecked(true);
@@ -498,6 +561,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         String webhookUrl = editWebhookUrl.getText().toString().trim();
         // Optional by design: a webhook guarded only by an unguessable webhook_id is a valid setup.
         String webhookSecret = editWebhookSecret.getText().toString().trim();
+        String closeUrl = editCloseUrl.getText().toString().trim();
+        String closeSecret = editCloseSecret.getText().toString().trim();
         boolean isWebhook = actionWebhook.isChecked();
 
         if (name.isEmpty()) {
@@ -515,6 +580,12 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             if (!WebhookHelper.isValidUrl(webhookUrl)) {
                 editWebhookUrl.setError(getString(R.string.error_webhook_invalid_url));
                 editWebhookUrl.requestFocus();
+                return;
+            }
+            // Empty is fine — it means "close with the same request". A typo is not.
+            if (!closeUrl.isEmpty() && !WebhookHelper.isValidUrl(closeUrl)) {
+                editCloseUrl.setError(getString(R.string.error_webhook_invalid_url));
+                editCloseUrl.requestFocus();
                 return;
             }
         } else if (phone.isEmpty()) {
@@ -550,6 +621,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
                     isOneWay ? Barrier.BarrierType.ONE_WAY : Barrier.BarrierType.BIDIRECTIONAL
             );
 
+            applyClosingSettings(currentBarrier, closeUrl, closeSecret);
             long id = dbHelper.addBarrier(currentBarrier);
             currentBarrier.setId(id);
             Toast.makeText(this, R.string.barrier_added, Toast.LENGTH_SHORT).show();
@@ -568,6 +640,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
                     isOneWay ? Barrier.BarrierType.ONE_WAY : Barrier.BarrierType.BIDIRECTIONAL
             );
 
+            applyClosingSettings(currentBarrier, closeUrl, closeSecret);
             dbHelper.updateBarrier(currentBarrier);
             Toast.makeText(this, R.string.barrier_updated, Toast.LENGTH_SHORT).show();
         }

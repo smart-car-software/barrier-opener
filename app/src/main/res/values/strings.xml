@@ -68,6 +68,7 @@
     <string name="coordinate_format">%.6f</string>
     <string name="distance_meters">%d m</string>
     <string name="angle_degrees">%d°</string>
+    <string name="duration_minutes">%d min</string>
 
     <!-- Form Fields -->
     <string name="hint_name">Name</string>
@@ -75,6 +76,9 @@
     <string name="hint_webhook_url">Request URL</string>
     <string name="hint_webhook_url_helper">POST is sent to this address, e.g. a Home Assistant webhook</string>
     <string name="hint_webhook_secret">Secret (optional)</string>
+    <string name="hint_close_url">Closing URL (optional)</string>
+    <string name="hint_close_url_helper">Leave empty to close with the same request that opens</string>
+    <string name="hint_close_secret">Closing secret (optional)</string>
     <string name="hint_webhook_secret_helper">Sent in the request body as {"secret": "…"}. Leave empty if the automation does not check one.</string>
     <string name="hint_latitude">Latitude</string>
     <string name="hint_longitude">Longitude</string>
@@ -123,6 +127,7 @@
     <string name="btn_no_window">No</string>
     <string name="popup_calling_window">Calling %s…</string>
     <string name="popup_nearby_header">Also in range:</string>
+    <string name="popup_close_title_window">Close barrier %s?</string>
 
     <!-- Location Service -->
     <string name="location_timeout">Could not get location: timeout</string>
@@ -147,6 +152,12 @@
     <string name="webhook_success">Request sent</string>
     <string name="webhook_http_error">Request failed: HTTP %1$d</string>
     <string name="webhook_failed">Request failed: %1$s</string>
+
+    <!-- Closing -->
+    <string name="close_section">Closing</string>
+    <string name="close_on_departure">Ask after driving away</string>
+    <string name="close_on_timer">Ask after a delay</string>
+    <string name="close_delay_label">Delay</string>
 
     <!-- Permission flow -->
     <string name="permission_background_location_title">Background location required</string>

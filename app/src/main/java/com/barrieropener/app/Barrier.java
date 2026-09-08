@@ -18,6 +18,8 @@
 package com.barrieropener.app;
 
 public class Barrier {
+    public static final int DEFAULT_CLOSE_DELAY_MINUTES = 3;
+
     /** What the app does when the user confirms opening the barrier. */
     public enum ActionType {
         /** Dial the barrier's phone number (classic GSM-relay barriers). */
@@ -76,6 +78,16 @@ public class Barrier {
     /** Optional shared secret sent as the JSON body of the webhook POST. May be null/empty. */
     private String webhookSecret;
     private ActionType actionType = ActionType.CALL;
+
+    /** Ask to close after the car has driven away from the barrier. */
+    private boolean closeOnDeparture;
+    /** Ask to close once {@link #closeDelayMinutes} have passed since opening. */
+    private boolean closeOnTimer;
+    private int closeDelayMinutes = DEFAULT_CLOSE_DELAY_MINUTES;
+    /** Endpoint for the closing request; empty means "reuse the opening request". */
+    private String closeUrl;
+    /** Secret for the closing request; only consulted when {@link #closeUrl} is set. */
+    private String closeSecret;
     private double latitude;
     private double longitude;
     private double heading;
@@ -116,6 +128,16 @@ public class Barrier {
     public String getWebhookUrl() { return webhookUrl; }
     public String getWebhookSecret() { return webhookSecret; }
     public ActionType getActionType() { return actionType; }
+    public boolean isCloseOnDeparture() { return closeOnDeparture; }
+    public boolean isCloseOnTimer() { return closeOnTimer; }
+    public int getCloseDelayMinutes() { return closeDelayMinutes; }
+    public String getCloseUrl() { return closeUrl; }
+    public String getCloseSecret() { return closeSecret; }
+
+    /** True when this barrier asks to be closed at all. Only webhook barriers can. */
+    public boolean isClosable() {
+        return actionType == ActionType.WEBHOOK && (closeOnDeparture || closeOnTimer);
+    }
     public double getLatitude() { return latitude; }
     public double getLongitude() { return longitude; }
     public double getHeading() { return heading; }
@@ -130,6 +152,11 @@ public class Barrier {
     public void setWebhookUrl(String webhookUrl) { this.webhookUrl = webhookUrl; }
     public void setWebhookSecret(String webhookSecret) { this.webhookSecret = webhookSecret; }
     public void setActionType(ActionType actionType) { this.actionType = actionType; }
+    public void setCloseOnDeparture(boolean closeOnDeparture) { this.closeOnDeparture = closeOnDeparture; }
+    public void setCloseOnTimer(boolean closeOnTimer) { this.closeOnTimer = closeOnTimer; }
+    public void setCloseDelayMinutes(int closeDelayMinutes) { this.closeDelayMinutes = closeDelayMinutes; }
+    public void setCloseUrl(String closeUrl) { this.closeUrl = closeUrl; }
+    public void setCloseSecret(String closeSecret) { this.closeSecret = closeSecret; }
     public void setLatitude(double latitude) { this.latitude = latitude; }
     public void setLongitude(double longitude) { this.longitude = longitude; }
     public void setHeading(double heading) { this.heading = heading; }

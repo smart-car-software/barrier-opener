@@ -39,6 +39,25 @@ public final class BarrierAction {
         }
     }
 
+    /**
+     * Sends the closing request. Falls back to the opening request when no separate closing
+     * endpoint is configured — for a toggle-style gate the same webhook both opens and closes.
+     */
+    public static void triggerClose(Context context, Barrier barrier) {
+        if (barrier == null || barrier.getActionType() != Barrier.ActionType.WEBHOOK) {
+            return;
+        }
+        String url = barrier.getCloseUrl();
+        String secret;
+        if (url == null || url.trim().isEmpty()) {
+            url = barrier.getWebhookUrl();
+            secret = barrier.getWebhookSecret();
+        } else {
+            secret = barrier.getCloseSecret();
+        }
+        WebhookHelper.sendRequest(context, url, secret);
+    }
+
     /** Short one-line target shown in list rows and notifications: the number, or the URL. */
     public static String describeTarget(Barrier barrier) {
         if (barrier == null) {

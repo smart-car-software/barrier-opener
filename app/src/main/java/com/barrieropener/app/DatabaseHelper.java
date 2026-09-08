@@ -27,7 +27,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "barrieropener.db";
-    private static final int DATABASE_VERSION = 6; // Incremented version for the webhook secret
+    private static final int DATABASE_VERSION = 7; // Incremented version for closing settings
 
     // Table name
     private static final String TABLE_BARRIERS = "barriers";
@@ -45,6 +45,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_ACTION_TYPE = "action_type";
     private static final String KEY_WEBHOOK_URL = "webhook_url";
     private static final String KEY_WEBHOOK_SECRET = "webhook_secret";
+    private static final String KEY_CLOSE_ON_DEPARTURE = "close_on_departure";
+    private static final String KEY_CLOSE_ON_TIMER = "close_on_timer";
+    private static final String KEY_CLOSE_DELAY_MINUTES = "close_delay_minutes";
+    private static final String KEY_CLOSE_URL = "close_url";
+    private static final String KEY_CLOSE_SECRET = "close_secret";
 
     // Create table SQL
     private static final String CREATE_TABLE_BARRIERS = "CREATE TABLE " + TABLE_BARRIERS +
@@ -59,14 +64,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_BARRIER_TYPE + " INTEGER," +
             KEY_ACTION_TYPE + " INTEGER DEFAULT 0," +
             KEY_WEBHOOK_URL + " TEXT," +
-            KEY_WEBHOOK_SECRET + " TEXT" +
+            KEY_WEBHOOK_SECRET + " TEXT," +
+            KEY_CLOSE_ON_DEPARTURE + " INTEGER DEFAULT 0," +
+            KEY_CLOSE_ON_TIMER + " INTEGER DEFAULT 0," +
+            KEY_CLOSE_DELAY_MINUTES + " INTEGER DEFAULT " + Barrier.DEFAULT_CLOSE_DELAY_MINUTES + "," +
+            KEY_CLOSE_URL + " TEXT," +
+            KEY_CLOSE_SECRET + " TEXT" +
             ")";
 
     /** Column order used by every read below; keeps cursor indices and the projection in sync. */
     private static final String[] COLUMNS = {
             KEY_ID, KEY_NAME, KEY_PHONE, KEY_LATITUDE, KEY_LONGITUDE, KEY_HEADING,
             KEY_DETECTION_RADIUS, KEY_ZOOM_LEVEL, KEY_BARRIER_TYPE, KEY_ACTION_TYPE,
-            KEY_WEBHOOK_URL, KEY_WEBHOOK_SECRET
+            KEY_WEBHOOK_URL, KEY_WEBHOOK_SECRET, KEY_CLOSE_ON_DEPARTURE, KEY_CLOSE_ON_TIMER,
+            KEY_CLOSE_DELAY_MINUTES, KEY_CLOSE_URL, KEY_CLOSE_SECRET
     };
 
     public DatabaseHelper(Context context) {
@@ -99,6 +110,19 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
                     KEY_WEBHOOK_SECRET + " TEXT");
         }
+        if (oldVersion < 7) {
+            // Migration to 7 - closing settings. Both triggers default to off, so existing
+            // barriers keep their open-only behaviour until the user turns closing on.
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_CLOSE_ON_DEPARTURE + " INTEGER DEFAULT 0");
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_CLOSE_ON_TIMER + " INTEGER DEFAULT 0");
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_CLOSE_DELAY_MINUTES + " INTEGER DEFAULT "
+                    + Barrier.DEFAULT_CLOSE_DELAY_MINUTES);
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_URL + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_SECRET + " TEXT");
+        }
     }
 
     /** Fills the shared column set; used by both insert and update. */
@@ -115,6 +139,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(KEY_ACTION_TYPE, barrier.getActionType().getValue());
         values.put(KEY_WEBHOOK_URL, barrier.getWebhookUrl());
         values.put(KEY_WEBHOOK_SECRET, barrier.getWebhookSecret());
+        values.put(KEY_CLOSE_ON_DEPARTURE, barrier.isCloseOnDeparture() ? 1 : 0);
+        values.put(KEY_CLOSE_ON_TIMER, barrier.isCloseOnTimer() ? 1 : 0);
+        values.put(KEY_CLOSE_DELAY_MINUTES, barrier.getCloseDelayMinutes());
+        values.put(KEY_CLOSE_URL, barrier.getCloseUrl());
+        values.put(KEY_CLOSE_SECRET, barrier.getCloseSecret());
         return values;
     }
 
@@ -135,6 +164,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         barrier.setActionType(Barrier.ActionType.fromValue(cursor.getInt(9)));
         barrier.setWebhookUrl(cursor.getString(10));
         barrier.setWebhookSecret(cursor.getString(11));
+        barrier.setCloseOnDeparture(cursor.getInt(12) != 0);
+        barrier.setCloseOnTimer(cursor.getInt(13) != 0);
+        if (!cursor.isNull(14)) {
+            barrier.setCloseDelayMinutes(cursor.getInt(14));
+        }
+        barrier.setCloseUrl(cursor.getString(15));
+        barrier.setCloseSecret(cursor.getString(16));
         return barrier;
     }
 

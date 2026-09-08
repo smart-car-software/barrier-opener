@@ -24,7 +24,9 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.location.Location;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -33,6 +35,7 @@ import androidx.core.app.NotificationManagerCompat;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class LocationService extends Service {
     private static final String TAG = "LocationService";
@@ -44,9 +47,22 @@ public class LocationService extends Service {
 
     private static volatile boolean _isStarted = false;
 
+    /** How often the timer-based closing trigger is re-evaluated without a fresh GPS fix. */
+    private static final long CLOSE_TICK_MS = 15_000L;
+
     private LocationManager locationManager;
     private BarrierRepository repository;
     private TriggerStateStore triggerState;
+    private PendingCloseStore pendingClose;
+    private Location lastLocation;
+    private final Handler closeTicker = new Handler(Looper.getMainLooper());
+    private final Runnable closeTick = new Runnable() {
+        @Override
+        public void run() {
+            checkPendingCloses(repository.getAll(), lastLocation);
+            closeTicker.postDelayed(this, CLOSE_TICK_MS);
+        }
+    };
 
     @Override
     public void onCreate() {
@@ -54,6 +70,7 @@ public class LocationService extends Service {
         repository = new BarrierRepository(this);
         repository.registerInvalidator();
         triggerState = new TriggerStateStore(this);
+        pendingClose = new PendingCloseStore(this);
         locationManager = new LocationManager(this);
     }
 
@@ -72,6 +89,8 @@ public class LocationService extends Service {
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, createNotification());
         startLocationUpdates();
+        closeTicker.removeCallbacks(closeTick);
+        closeTicker.postDelayed(closeTick, CLOSE_TICK_MS);
 
         return START_STICKY;
     }
@@ -140,7 +159,9 @@ public class LocationService extends Service {
 
     private void checkNearbyBarriers(Location location) {
         List<Barrier> barriers = repository.getAll();
+        lastLocation = location;
         triggerState.releaseFarBarriers(location.getLatitude(), location.getLongitude(), barriers);
+        checkPendingCloses(barriers, location);
 
         NearbyResolver.Resolution res = NearbyResolver.resolve(
                 barriers,
@@ -163,6 +184,58 @@ public class LocationService extends Service {
                 triggerState.markTriggered(b.getId());
             }
         }
+    }
+
+    /**
+     * Offers to close every barrier whose closing trigger has fired. Runs both on location updates
+     * and on the periodic tick, because the timer must still fire when the car is parked and no
+     * fresh fixes arrive — a gate left open is exactly the case where the vehicle stopped moving.
+     */
+    private void checkPendingCloses(List<Barrier> barriers, Location location) {
+        Map<Long, Long> pending = pendingClose.all();
+        if (pending.isEmpty()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        for (Barrier b : barriers) {
+            Long openedAt = pending.get(b.getId());
+            if (openedAt == null) {
+                continue;
+            }
+            if (!b.isClosable()) {
+                // Closing was switched off after the gate was opened; drop the stale entry.
+                pendingClose.clear(b.getId());
+                continue;
+            }
+            double distance = -1;
+            if (location != null) {
+                float[] d = new float[1];
+                Location.distanceBetween(location.getLatitude(), location.getLongitude(),
+                        b.getLatitude(), b.getLongitude(), d);
+                distance = d[0];
+            }
+            CloseResolver.Reason reason = CloseResolver.evaluate(b, openedAt, now, distance);
+            if (reason != null) {
+                Log.d(TAG, "Offering to close " + b.getName() + " (" + reason + ")");
+                triggerClosePopup(b);
+                // Asked once; the popup clears the entry when the driver answers or it times out.
+                pendingClose.clear(b.getId());
+            }
+        }
+    }
+
+    private void triggerClosePopup(Barrier barrier) {
+        Intent popupIntent = new Intent(this, BarrierPopupActivity.class);
+        popupIntent.putExtra("barrier_id", barrier.getId());
+        popupIntent.putExtra("barrier_name", barrier.getName());
+        popupIntent.putExtra(BarrierPopupActivity.EXTRA_MODE, BarrierPopupActivity.MODE_CLOSE);
+        popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        try {
+            startActivity(popupIntent);
+        } catch (Exception e) {
+            Log.w(TAG, "Could not start close popup directly", e);
+        }
+        showPopupFullScreenNotification(barrier, popupIntent);
     }
 
     private boolean triggerBarrierPopup(Barrier primary, List<Barrier> inZone) {
@@ -244,6 +317,7 @@ public class LocationService extends Service {
     public void onDestroy() {
         super.onDestroy();
         _isStarted = false;
+        closeTicker.removeCallbacks(closeTick);
         locationManager.stopLocationUpdates();
         repository.unregisterInvalidator();
     }

@@ -161,6 +161,108 @@
                                 android:maxLines="1" />
                         </com.google.android.material.textfield.TextInputLayout>
 
+                        <LinearLayout
+                            android:id="@+id/closeSection"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="20dp"
+                                android:text="@string/close_section"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchCloseOnDeparture"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="@string/close_on_departure"
+                                android:textColor="@color/text_primary" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchCloseOnTimer"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="@string/close_on_timer"
+                                android:textColor="@color/text_primary" />
+
+                            <LinearLayout
+                                android:id="@+id/closeDelayContainer"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:orientation="vertical"
+                                android:visibility="gone">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal">
+
+                                    <TextView
+                                        android:layout_width="0dp"
+                                        android:layout_height="wrap_content"
+                                        android:layout_weight="1"
+                                        android:text="@string/close_delay_label"
+                                        android:textColor="@color/text_secondary"
+                                        android:textSize="14sp" />
+
+                                    <TextView
+                                        android:id="@+id/textCloseDelay"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textColor="@color/text_primary"
+                                        android:textSize="14sp"
+                                        android:textStyle="bold" />
+                                </LinearLayout>
+
+                                <SeekBar
+                                    android:id="@+id/seekCloseDelay"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content" />
+                            </LinearLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                app:helperText="@string/hint_close_url_helper"
+                                app:helperTextEnabled="true"
+                                android:hint="@string/hint_close_url">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/editCloseUrl"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textUri"
+                                    android:maxLines="1" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                app:endIconMode="password_toggle"
+                                android:hint="@string/hint_close_secret">
+
+                                <com.google.android.material.textfield.TextInputEditText
+                                    android:id="@+id/editCloseSecret"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="textPassword"
+                                    android:maxLines="1" />
+                            </com.google.android.material.textfield.TextInputLayout>
+                        </LinearLayout>
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"

@@ -55,7 +55,12 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private Button btnWait;
     private CountDownTimer countdown;
 
+    /** Intent extra: "close" puts the popup in closing mode; anything else means opening. */
+    public static final String EXTRA_MODE = "popup_mode";
+    public static final String MODE_CLOSE = "close";
+
     private String barrierName;
+    private boolean closeMode;
     private long primaryId = -1;
     private Barrier primaryBarrier;
     private long[] nearbyIds;
@@ -180,7 +185,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         barrierNameText = findViewById(R.id.textBarrierName);
         autoDismissText = findViewById(R.id.textAutoDismiss);
 
-        findViewById(R.id.btnYes).setOnClickListener(v -> openBarrier());
+        findViewById(R.id.btnYes).setOnClickListener(v -> confirmAction());
         findViewById(R.id.btnNo).setOnClickListener(v -> dismissPopup());
         btnWait = findViewById(R.id.btnWait);
         btnWait.setOnClickListener(v -> cancelAutoDismiss());
@@ -191,6 +196,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void getIntentData() {
         Intent intent = getIntent();
         barrierName = intent.getStringExtra("barrier_name");
+        closeMode = MODE_CLOSE.equals(intent.getStringExtra(EXTRA_MODE));
         primaryId = intent.getLongExtra("barrier_id", -1);
         nearbyIds = intent.getLongArrayExtra("nearby_ids");
         primaryBarrier = findBarrier(primaryId);
@@ -275,7 +281,9 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     /** Renders the nearby list from the intent extras (initial paint before the first fix). */
     private void buildNearbyList() {
-        renderNearby(resolve(nearbyIds));
+        // Closing is about one specific gate the driver left open; offering the neighbours' open
+        // buttons in that moment would only invite a mis-tap.
+        renderNearby(closeMode ? new ArrayList<>() : resolve(nearbyIds));
     }
 
     /**
@@ -325,7 +333,9 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     private void updateUI() {
         if (barrierName != null) {
-            barrierNameText.setText(getString(R.string.popup_title_window, barrierName));
+            barrierNameText.setText(getString(
+                    closeMode ? R.string.popup_close_title_window : R.string.popup_title_window,
+                    barrierName));
         }
         autoDismissText.setVisibility(View.VISIBLE);
         autoDismissText.setText(getString(R.string.auto_dismiss,
@@ -379,12 +389,32 @@ public class BarrierPopupActivity extends AppCompatActivity {
         }
     }
 
-    private void openBarrier() {
-        BarrierAction.trigger(this, primaryBarrier);
+    private void confirmAction() {
+        if (closeMode) {
+            BarrierAction.triggerClose(this, primaryBarrier);
+        } else {
+            BarrierAction.trigger(this, primaryBarrier);
+            armClosingIfConfigured();
+        }
         dismissPopup();
     }
 
+    /**
+     * Arms the closing triggers, but only for a barrier that asked for them. Opening from the
+     * barrier list does not arm anything — that happens while configuring at a desk, not while
+     * driving through a gate.
+     */
+    private void armClosingIfConfigured() {
+        if (primaryBarrier != null && primaryBarrier.isClosable()) {
+            new PendingCloseStore(this).markOpened(primaryBarrier.getId());
+        }
+    }
+
     private void dismissPopup() {
+        // The closing question has now been put to the driver — answered or not, we don't nag.
+        if (closeMode && primaryId != -1) {
+            new PendingCloseStore(this).clear(primaryId);
+        }
         if (countdown != null) {
             countdown.cancel();
             countdown = null;

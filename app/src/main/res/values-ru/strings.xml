@@ -68,6 +68,7 @@
     <string name="coordinate_format">%.6f</string>
     <string name="distance_meters">%d м</string>
     <string name="angle_degrees">%d°</string>
+    <string name="duration_minutes">%d мин</string>
 
     <!-- Form Fields -->
     <string name="hint_name">Название</string>
@@ -75,6 +76,9 @@
     <string name="hint_webhook_url">Ссылка для запроса</string>
     <string name="hint_webhook_url_helper">На этот адрес отправляется POST, например webhook Home Assistant</string>
     <string name="hint_webhook_secret">Секрет (необязательно)</string>
+    <string name="hint_close_url">Ссылка для закрытия (необязательно)</string>
+    <string name="hint_close_url_helper">Оставьте пустым — закроем тем же запросом, что открывает</string>
+    <string name="hint_close_secret">Секрет для закрытия (необязательно)</string>
     <string name="hint_webhook_secret_helper">Уходит в теле запроса как {"secret": "…"}. Оставьте пустым, если автоматизация его не проверяет.</string>
     <string name="hint_latitude">Широта</string>
     <string name="hint_longitude">Долгота</string>
@@ -131,6 +135,7 @@
     <string name="btn_no_window">Нет</string>
     <string name="popup_calling_window">Звонок %s…</string>
     <string name="popup_nearby_header">Также в зоне:</string>
+    <string name="popup_close_title_window">Закрыть шлагбаум %s?</string>
 
     <!-- Add/Edit Barrier Screen -->
     <string name="barrier_type">Тип шлагбаума</string>
@@ -158,6 +163,12 @@
     <string name="permission_open_settings">Открыть настройки</string>
     <string name="action_continue">Продолжить</string>
     <string name="action_later">Позже</string>
+
+    <!-- Закрытие -->
+    <string name="close_section">Закрытие</string>
+    <string name="close_on_departure">Спрашивать при отъезде</string>
+    <string name="close_on_timer">Спрашивать по таймеру</string>
+    <string name="close_delay_label">Задержка</string>
 
     <!-- Service notification -->
     <string name="notification_action_stop">Остановить</string>
