@@ -292,6 +292,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
         // Map controls
         findViewById(R.id.fabMyLocation).setOnClickListener(v -> getCurrentLocation());
+        findViewById(R.id.fabSearch).setOnClickListener(v -> showAddressSearchDialog());
         findViewById(R.id.fabPlus).setOnClickListener(v -> changeZoomByStep(ZOOM_STEP));
         findViewById(R.id.fabMinus).setOnClickListener(v -> changeZoomByStep(-ZOOM_STEP));
 
@@ -318,6 +319,76 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         // Closing is a request too, so it is offered only where opening is one: a GSM barrier's
         // repeat call is a toggle whose effect we cannot predict.
         closeSection.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * Asks for an address and hands the matches back as a picker. Geocoding goes over HTTP because
+     * the bundled MapKit is the lite flavour, which has no search of its own.
+     */
+    private void showAddressSearchDialog() {
+        if (!GeocoderHelper.isConfigured()) {
+            Toast.makeText(this, R.string.error_geocoder_not_configured, Toast.LENGTH_LONG).show();
+            return;
+        }
+        final EditText input = new EditText(this);
+        input.setHint(R.string.hint_search_address);
+        input.setSingleLine(true);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(pad, pad, pad, pad);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.search_address)
+                .setView(input)
+                .setPositiveButton(R.string.action_search,
+                        (d, which) -> runAddressSearch(input.getText().toString()))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void runAddressSearch(String query) {
+        Toast.makeText(this, R.string.search_in_progress, Toast.LENGTH_SHORT).show();
+        // Bias towards what is on screen: the same street name exists in every city.
+        Point near = map != null ? map.getCameraPosition().getTarget() : null;
+        GeocoderHelper.search(query, near, new GeocoderHelper.Callback() {
+            @Override
+            public void onResults(java.util.List<GeocoderResponse.Place> places) {
+                if (isFinishing() || isDestroyed()) return;
+                if (places.isEmpty()) {
+                    Toast.makeText(AddEditBarrierActivity.this, R.string.search_nothing_found,
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                showResultPicker(places);
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                Toast.makeText(AddEditBarrierActivity.this,
+                        getString(R.string.search_failed, message), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showResultPicker(java.util.List<GeocoderResponse.Place> places) {
+        String[] labels = new String[places.size()];
+        for (int i = 0; i < places.size(); i++) {
+            labels[i] = places.get(i).address;
+        }
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.search_results)
+                .setItems(labels, (d, which) -> applySearchResult(places.get(which)))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    /** Moves the pin to a found address, exactly as tapping that spot on the map would. */
+    private void applySearchResult(GeocoderResponse.Place place) {
+        selectedPoint = new Point(place.latitude, place.longitude);
+        updateLocationFields();
+        updatePlacemark();
+        float zoom = map != null ? Math.max(map.getCameraPosition().getZoom(), 16f) : 16f;
+        moveCameraToPosition(selectedPoint, zoom);
     }
 
     private void changeZoomByStep(float value) {

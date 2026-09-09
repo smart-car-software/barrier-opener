@@ -107,4 +107,7 @@ dependencies {
     implementation libs.yandex.mapkit
 
     testImplementation 'junit:junit:4.13.2'
+    // Real org.json for unit tests: the android.jar stub throws on every call, which would make
+    // the geocoder response parsing untestable off-device.
+    testImplementation 'org.json:json:20240303'
 }

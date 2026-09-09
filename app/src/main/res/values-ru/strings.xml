@@ -97,6 +97,14 @@
 
     <!-- Location -->
     <string name="my_location">Мое местоположение</string>
+    <string name="search_address">Поиск по адресу</string>
+    <string name="hint_search_address">Город, улица, дом</string>
+    <string name="action_search">Найти</string>
+    <string name="search_results">Результаты поиска</string>
+    <string name="search_in_progress">Ищем…</string>
+    <string name="search_nothing_found">По такому адресу ничего не найдено</string>
+    <string name="search_failed">Поиск не удался: %1$s</string>
+    <string name="error_geocoder_not_configured">Для поиска нужен ключ Яндекса с подключённым сервисом «Геокодер»</string>
     <string name="zoom_in">Приблизить</string>
     <string name="zoom_out">Отдалить</string>
     <string name="label_latitude">Широта</string>
