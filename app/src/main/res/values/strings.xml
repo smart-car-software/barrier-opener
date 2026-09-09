@@ -99,12 +99,8 @@
     <string name="my_location">My Location</string>
     <string name="search_address">Search by address</string>
     <string name="hint_search_address">City, street, house</string>
-    <string name="action_search">Search</string>
-    <string name="search_results">Search results</string>
-    <string name="search_in_progress">Searching…</string>
     <string name="search_nothing_found">Nothing found for that address</string>
     <string name="search_failed">Search failed: %1$s</string>
-    <string name="error_geocoder_not_configured">Address search needs a Yandex API key with the Geocoder service enabled</string>
     <string name="zoom_in">Zoom in</string>
     <string name="zoom_out">Zoom out</string>
     <string name="label_latitude">Latitude</string>

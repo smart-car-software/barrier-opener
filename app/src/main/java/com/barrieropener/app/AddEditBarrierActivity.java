@@ -25,11 +25,18 @@ import android.graphics.PointF;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,6 +51,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.yandex.mapkit.Animation;
 import com.yandex.mapkit.MapKitFactory;
+import com.yandex.mapkit.geometry.BoundingBox;
 import com.yandex.mapkit.geometry.Circle;
 import com.yandex.mapkit.geometry.Point;
 import com.yandex.mapkit.map.CameraPosition;
@@ -54,8 +62,11 @@ import com.yandex.mapkit.map.Map;
 import com.yandex.mapkit.map.MapObjectCollection;
 import com.yandex.mapkit.map.PlacemarkMapObject;
 import com.yandex.mapkit.map.RotationType;
+import com.yandex.mapkit.map.VisibleRegion;
 import com.yandex.mapkit.mapview.MapView;
 import com.yandex.runtime.image.ImageProvider;
+
+import java.util.ArrayList;
 
 public class AddEditBarrierActivity extends AppCompatActivity implements InputListener {
     private static final String TAG = "AddEditBarrier";
@@ -77,6 +88,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private View closeSection, closeDelayContainer;
     private com.google.android.material.materialswitch.MaterialSwitch switchCloseOnDeparture, switchCloseOnTimer;
     private SeekBar seekCloseDelay;
+    private AddressSearch addressSearch;
     private TextView textCloseDelay;
     private MaterialButton actionCall, actionWebhook;
     private SeekBar seekRadius, seekHeading;
@@ -322,43 +334,76 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     }
 
     /**
-     * Asks for an address and hands the matches back as a picker. Geocoding goes over HTTP because
-     * the bundled MapKit is the lite flavour, which has no search of its own.
+     * Address lookup: suggestions appear as the user types, and picking one drops the pin there.
+     * Typing on a car screen is slow, so a suggestion list earns its place more here than it would
+     * on a phone.
      */
     private void showAddressSearchDialog() {
-        if (!GeocoderHelper.isConfigured()) {
-            Toast.makeText(this, R.string.error_geocoder_not_configured, Toast.LENGTH_LONG).show();
-            return;
+        if (addressSearch == null) {
+            addressSearch = new AddressSearch();
         }
-        final EditText input = new EditText(this);
+        float density = getResources().getDisplayMetrics().density;
+        int pad = (int) (16 * density);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, 0);
+
+        EditText input = new EditText(this);
         input.setHint(R.string.hint_search_address);
         input.setSingleLine(true);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        input.setPadding(pad, pad, pad, pad);
+        root.addView(input);
 
-        new androidx.appcompat.app.AlertDialog.Builder(this)
+        ListView list = new ListView(this);
+        ArrayAdapter<AddressSearch.Suggestion> adapter =
+                new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, new ArrayList<>());
+        list.setAdapter(adapter);
+        root.addView(list, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (280 * density)));
+
+        androidx.appcompat.app.AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(R.string.search_address)
-                .setView(input)
-                .setPositiveButton(R.string.action_search,
-                        (d, which) -> runAddressSearch(input.getText().toString()))
+                .setView(root)
                 .setNegativeButton(R.string.cancel, null)
-                .show();
+                .create();
+
+        // Debounced: a request per keystroke would burn quota and arrive out of order anyway.
+        final Handler debounce = new Handler(Looper.getMainLooper());
+        input.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                debounce.removeCallbacksAndMessages(null);
+                final String query = s.toString();
+                debounce.postDelayed(() -> requestSuggestions(query, adapter), 300L);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        list.setOnItemClickListener((parent, view, position, id) -> {
+            AddressSearch.Suggestion picked = adapter.getItem(position);
+            debounce.removeCallbacksAndMessages(null);
+            dialog.dismiss();
+            applySuggestion(picked);
+        });
+
+        dialog.show();
     }
 
-    private void runAddressSearch(String query) {
-        Toast.makeText(this, R.string.search_in_progress, Toast.LENGTH_SHORT).show();
-        // Bias towards what is on screen: the same street name exists in every city.
-        Point near = map != null ? map.getCameraPosition().getTarget() : null;
-        GeocoderHelper.search(query, near, new GeocoderHelper.Callback() {
+    private void requestSuggestions(String query, ArrayAdapter<AddressSearch.Suggestion> adapter) {
+        addressSearch.suggest(query, currentMapWindow(), new AddressSearch.SuggestCallback() {
             @Override
-            public void onResults(java.util.List<GeocoderResponse.Place> places) {
+            public void onSuggestions(java.util.List<AddressSearch.Suggestion> suggestions) {
                 if (isFinishing() || isDestroyed()) return;
-                if (places.isEmpty()) {
-                    Toast.makeText(AddEditBarrierActivity.this, R.string.search_nothing_found,
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                showResultPicker(places);
+                adapter.clear();
+                adapter.addAll(suggestions);
+                adapter.notifyDataSetChanged();
             }
 
             @Override
@@ -370,25 +415,34 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         });
     }
 
-    private void showResultPicker(java.util.List<GeocoderResponse.Place> places) {
-        String[] labels = new String[places.size()];
-        for (int i = 0; i < places.size(); i++) {
-            labels[i] = places.get(i).address;
-        }
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(R.string.search_results)
-                .setItems(labels, (d, which) -> applySearchResult(places.get(which)))
-                .setNegativeButton(R.string.cancel, null)
-                .show();
+    private void applySuggestion(AddressSearch.Suggestion suggestion) {
+        if (suggestion == null) return;
+        addressSearch.resolve(suggestion, currentMapWindow(), new AddressSearch.ResolveCallback() {
+            @Override
+            public void onResolved(Point point) {
+                if (isFinishing() || isDestroyed()) return;
+                selectedPoint = point;
+                updateLocationFields();
+                updatePlacemark();
+                float zoom = map != null ? Math.max(map.getCameraPosition().getZoom(), 17f) : 17f;
+                moveCameraToPosition(selectedPoint, zoom);
+            }
+
+            @Override
+            public void onError(String message) {
+                if (isFinishing() || isDestroyed()) return;
+                Toast.makeText(AddEditBarrierActivity.this,
+                        message == null ? getString(R.string.search_nothing_found)
+                                : getString(R.string.search_failed, message),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
-    /** Moves the pin to a found address, exactly as tapping that spot on the map would. */
-    private void applySearchResult(GeocoderResponse.Place place) {
-        selectedPoint = new Point(place.latitude, place.longitude);
-        updateLocationFields();
-        updatePlacemark();
-        float zoom = map != null ? Math.max(map.getCameraPosition().getZoom(), 16f) : 16f;
-        moveCameraToPosition(selectedPoint, zoom);
+    /** What the user is currently looking at — used to rank nearby matches first. */
+    private BoundingBox currentMapWindow() {
+        VisibleRegion region = map.getVisibleRegion();
+        return new BoundingBox(region.getBottomLeft(), region.getTopRight());
     }
 
     private void changeZoomByStep(float value) {
