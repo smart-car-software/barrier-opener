@@ -127,6 +127,11 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         MapKitFactory.initialize(this);
         setContentView(R.layout.activity_add_edit_barrier);
 
+        // Decided before the toolbar is built: setupToolbar() titles the screen from this flag,
+        // so learning about edit mode afterwards left every edit screen labelled "Add barrier".
+        long barrierId = getIntent().getLongExtra("barrier_id", -1);
+        isEditMode = barrierId != -1;
+
         locationManager = new LocationManager(this);
         setupToolbar();
         initViews();
@@ -136,10 +141,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
         dbHelper = new DatabaseHelper(this);
 
-        // Check if editing existing barrier
-        long barrierId = getIntent().getLongExtra("barrier_id", -1);
-        if (barrierId != -1) {
-            isEditMode = true;
+        if (isEditMode) {
             loadBarrierData(barrierId);
         } else if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
