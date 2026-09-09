@@ -51,12 +51,19 @@ public class CloseResolverTest {
     }
 
     @Test
-    public void departure_firesOnlyBeyondDoubledRadius() {
+    public void departure_firesJustOutsideTheZone() {
         Barrier b = webhookBarrier(true, false, 3);
-        // Still inside the gate area: 50m radius, release threshold is 100m.
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 99));
+        // 50m radius plus a 5m hysteresis margin: still "at the gate" at 55m, away at 56m.
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 55));
         assertEquals(CloseResolver.Reason.DEPARTURE,
-                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 101));
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 56));
+    }
+
+    @Test
+    public void departure_doesNotFireInsideTheZone() {
+        Barrier b = webhookBarrier(true, false, 3);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 0));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 50));
     }
 
     @Test

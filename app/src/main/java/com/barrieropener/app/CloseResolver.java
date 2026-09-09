@@ -25,17 +25,22 @@ package com.barrieropener.app;
  * independent and whichever fires first wins:
  *
  * <ul>
- *   <li><b>Departure</b> — the car has left the release radius (twice the detection radius, the
- *       same threshold {@link TriggerStateStore} uses to forget a barrier). The doubled radius is
- *       deliberate: closing must not be offered while the car is still creeping through the gate,
- *       and it keeps GPS jitter at the boundary from firing the prompt.</li>
+ *   <li><b>Departure</b> — the car has left the detection zone plus {@link #DEPARTURE_MARGIN_M}.
+ *       The margin is hysteresis, not distance: it only has to outlast GPS jitter around the edge
+ *       of the zone, so the question comes as soon as the car is actually out rather than a block
+ *       later.</li>
  *   <li><b>Timer</b> — the configured number of minutes has passed since opening, which covers the
  *       case where the car never drives away (parked inside) or GPS never reports the departure.</li>
  * </ul>
  */
 public final class CloseResolver {
 
-    public static final float RELEASE_RADIUS_FACTOR = 2.0f;
+    /**
+     * How far past the detection radius the car must be before departure counts. Small on purpose —
+     * the driver should be asked right after leaving, not a block away — but non-zero so a fix
+     * wobbling around the boundary doesn't fire the prompt while the car is still at the gate.
+     */
+    public static final double DEPARTURE_MARGIN_M = 5.0;
 
     public enum Reason {
         /** The car drove away from the barrier. */
@@ -57,7 +62,7 @@ public final class CloseResolver {
             return null;
         }
         if (barrier.isCloseOnDeparture() && distanceM >= 0
-                && distanceM > barrier.getDetectionRadius() * RELEASE_RADIUS_FACTOR) {
+                && distanceM > barrier.getDetectionRadius() + DEPARTURE_MARGIN_M) {
             return Reason.DEPARTURE;
         }
         if (barrier.isCloseOnTimer()) {

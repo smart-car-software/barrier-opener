@@ -200,6 +200,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         // The delay only means something for the timer trigger, so it follows that switch.
         switchCloseOnTimer.setOnCheckedChangeListener((v, checked) ->
                 closeDelayContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
+        // The closing circle appears and disappears with its own trigger.
+        switchCloseOnDeparture.setOnCheckedChangeListener((v, checked) -> updatePlacemark());
         editLatitude = findViewById(R.id.editLatitude);
         editLongitude = findViewById(R.id.editLongitude);
         seekRadius = findViewById(R.id.seekRadius);
@@ -216,6 +218,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         toggleActionType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
             applyActionTypeVisibility(checkedId == R.id.actionWebhook);
+            updatePlacemark();
         });
 
         // Set up barrier type toggle group listener
@@ -476,8 +479,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     }
 
     private void updatePlacemark() {
-        if (selectedPoint == null) {
-            Log.d(TAG, "selectedPoint is null");
+        if (selectedPoint == null || mapObjects == null) {
             return;
         }
         Log.d(TAG, "Updating placemark at: " + selectedPoint.getLatitude() + ", " + selectedPoint.getLongitude());
@@ -506,8 +508,18 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
             Log.d(TAG, "Placemark updated with heading: " + currentHeading);
 
-            // Create and configure the circle
-            CircleMapObject radiusCircle = mapObjects.addCircle(new Circle(selectedPoint, seekRadius.getProgress()));
+            int radius = currentRadiusMeters();
+
+            // The closing zone goes first so the smaller opening circle stays readable on top of it.
+            if (showsCloseRadius()) {
+                CircleMapObject closeCircle = mapObjects.addCircle(new Circle(selectedPoint,
+                        (float) (radius + CloseResolver.DEPARTURE_MARGIN_M)));
+                closeCircle.setStrokeWidth(2f);
+                closeCircle.setStrokeColor(0x66FF6600); // Semi-transparent orange stroke
+                closeCircle.setFillColor(0x11FF6600);   // Barely-there orange fill
+            }
+
+            CircleMapObject radiusCircle = mapObjects.addCircle(new Circle(selectedPoint, radius));
             radiusCircle.setStrokeWidth(2f);
             radiusCircle.setStrokeColor(0x550000FF); // Semi-transparent blue stroke
             radiusCircle.setFillColor(0x220000FF);   // More transparent blue fill
@@ -525,6 +537,18 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 //            updateRadiusCircle();
 //            return true;
 //        });
+    }
+
+    private int currentRadiusMeters() {
+        return seekRadius.getProgress() + MIN_RADIUS;
+    }
+
+    /**
+     * The closing circle is only meaningful for the departure trigger — the timer isn't spatial —
+     * and only webhook barriers can close at all.
+     */
+    private boolean showsCloseRadius() {
+        return actionWebhook.isChecked() && switchCloseOnDeparture.isChecked();
     }
 
     private Bitmap getBitmapFromVectorDrawable(int drawableId) {
@@ -616,7 +640,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
                     selectedPoint.getLatitude(),
                     selectedPoint.getLongitude(),
                     heading,
-                    seekRadius.getProgress() + MIN_RADIUS,
+                    currentRadiusMeters(),
                     currentZoom,
                     isOneWay ? Barrier.BarrierType.ONE_WAY : Barrier.BarrierType.BIDIRECTIONAL
             );
@@ -634,7 +658,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             currentBarrier.setLatitude(selectedPoint.getLatitude());
             currentBarrier.setLongitude(selectedPoint.getLongitude());
             currentBarrier.setHeading(heading);
-            currentBarrier.setDetectionRadius(seekRadius.getProgress() + MIN_RADIUS);
+            currentBarrier.setDetectionRadius(currentRadiusMeters());
             currentBarrier.setZoomLevel(currentZoom);
             currentBarrier.setBarrierType(
                     isOneWay ? Barrier.BarrierType.ONE_WAY : Barrier.BarrierType.BIDIRECTIONAL
