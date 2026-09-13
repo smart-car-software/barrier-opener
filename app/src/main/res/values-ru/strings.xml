@@ -168,10 +168,29 @@
     <string name="action_continue">Продолжить</string>
     <string name="action_later">Позже</string>
 
+    <!-- Запуск -->
+    <string name="startup_section">При запуске машины</string>
+    <string name="startup_wait_belt">Ждать, пока водитель пристегнётся</string>
+    <string name="startup_wait_warmup">Ждать прогрева двигателя (обороты ниже 1000)</string>
+    <string name="startup_wait_unsupported">Эта голова не сообщает состояние машины, поэтому переключатели здесь ни на что не влияют</string>
+
     <!-- Закрытие -->
     <string name="close_section">Закрытие</string>
     <string name="close_on_departure">Спрашивать при отъезде</string>
     <string name="close_on_timer">Спрашивать по таймеру</string>
+    <string name="close_on_park">Спрашивать при переводе в паркинг</string>
+    <string name="close_on_park_unsupported">Эта магнитола не сообщает положение коробки передач — на ней триггер не сработает</string>
+    <string name="park_status_checking">Коробка передач: проверяю…</string>
+    <string name="park_status_gear">Коробка передач: %1$s — нажмите для диагностики</string>
+    <string name="park_status_rpm">обороты: %1$s</string>
+    <string name="park_status_belt_buckled">ремень пристёгнут</string>
+    <string name="park_status_belt_unbuckled">ремень не пристёгнут</string>
+    <string name="park_status_no_access">Нет доступа к коробке передач — нажмите для диагностики</string>
+    <string name="park_diagnostics_title">Диагностика коробки передач</string>
+    <string name="park_diagnostics_copy">Скопировать</string>
+    <string name="park_diagnostics_request">Запросить доступ</string>
+    <string name="park_diagnostics_close">Закрыть</string>
+    <string name="park_diagnostics_copied">Отчёт скопирован в буфер обмена</string>
     <string name="close_delay_label">Задержка</string>
 
     <!-- Service notification -->

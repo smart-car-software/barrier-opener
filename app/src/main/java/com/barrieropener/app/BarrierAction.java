@@ -47,15 +47,28 @@ public final class BarrierAction {
         if (barrier == null || barrier.getActionType() != Barrier.ActionType.WEBHOOK) {
             return;
         }
-        String url = barrier.getCloseUrl();
-        String secret;
-        if (url == null || url.trim().isEmpty()) {
-            url = barrier.getWebhookUrl();
-            secret = barrier.getWebhookSecret();
-        } else {
-            secret = barrier.getCloseSecret();
+        boolean hasOwnEndpoint = barrier.getCloseUrl() != null
+                && !barrier.getCloseUrl().trim().isEmpty();
+        WebhookHelper.sendRequest(context, urlFor(barrier, true),
+                hasOwnEndpoint ? barrier.getCloseSecret() : barrier.getWebhookSecret());
+    }
+
+    /**
+     * The URL a given action would hit, or null when the action is a phone call. Kept here rather
+     * than at the call sites so "which endpoint does closing use" stays a single decision — the
+     * fallback to the opening webhook included.
+     */
+    public static String urlFor(Barrier barrier, boolean closing) {
+        if (barrier == null || barrier.getActionType() != Barrier.ActionType.WEBHOOK) {
+            return null;
         }
-        WebhookHelper.sendRequest(context, url, secret);
+        if (closing) {
+            String closeUrl = barrier.getCloseUrl();
+            if (closeUrl != null && !closeUrl.trim().isEmpty()) {
+                return closeUrl;
+            }
+        }
+        return barrier.getWebhookUrl();
     }
 
     /** Short one-line target shown in list rows and notifications: the number, or the URL. */

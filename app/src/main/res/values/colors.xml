@@ -39,6 +39,12 @@
 
     <color name="scrim_80">#CC000000</color>
 
+    <!-- Map controls. The zoom / search / my-location FABs float over map tiles rather than over a
+         screen surface, so they get their own pair: a charcoal icon on the dark night surface was
+         black-on-black and effectively invisible. -->
+    <color name="map_control_background">@color/surface</color>
+    <color name="map_control_icon">@color/brand_charcoal</color>
+
     <!-- Status indicators -->
     <color name="status_ok">#1E8E3E</color>
     <color name="status_warning">#F29900</color>

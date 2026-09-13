@@ -162,6 +162,48 @@
                         </com.google.android.material.textfield.TextInputLayout>
 
                         <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="20dp"
+                                android:text="@string/startup_section"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchStartupWaitBelt"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="@string/startup_wait_belt"
+                                android:textColor="@color/text_primary" />
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchStartupWaitWarmUp"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="@string/startup_wait_warmup"
+                                android:textColor="@color/text_primary" />
+
+                            <TextView
+                                android:id="@+id/textStartupStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:paddingVertical="6dp"
+                                android:text="@string/park_status_checking"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:visibility="gone" />
+                        </LinearLayout>
+
+                        <LinearLayout
                             android:id="@+id/closeSection"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -228,6 +270,25 @@
                                     android:layout_width="match_parent"
                                     android:layout_height="wrap_content" />
                             </LinearLayout>
+
+                            <com.google.android.material.materialswitch.MaterialSwitch
+                                android:id="@+id/switchCloseOnPark"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="@string/close_on_park"
+                                android:textColor="@color/text_primary" />
+
+                            <TextView
+                                android:id="@+id/textParkStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:paddingVertical="6dp"
+                                android:text="@string/park_status_checking"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:visibility="gone" />
 
                             <com.google.android.material.textfield.TextInputLayout
                                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
@@ -453,8 +514,8 @@
                     android:contentDescription="@string/zoom_in"
                     android:src="@drawable/ic_zoom_in"
                     app:fabSize="mini"
-                    app:tint="@color/brand_charcoal"
-                    app:backgroundTint="@color/surface" />
+                    app:tint="@color/map_control_icon"
+                    app:backgroundTint="@color/map_control_background" />
 
                 <com.google.android.material.floatingactionbutton.FloatingActionButton
                     android:id="@+id/fabMinus"
@@ -466,8 +527,8 @@
                     android:contentDescription="@string/zoom_out"
                     android:src="@drawable/ic_zoom_out"
                     app:fabSize="mini"
-                    app:tint="@color/brand_charcoal"
-                    app:backgroundTint="@color/surface" />
+                    app:tint="@color/map_control_icon"
+                    app:backgroundTint="@color/map_control_background" />
 
                 <com.google.android.material.floatingactionbutton.FloatingActionButton
                     android:id="@+id/fabSearch"
@@ -478,9 +539,9 @@
                     android:layout_marginTop="116dp"
                     android:contentDescription="@string/search_address"
                     android:src="@android:drawable/ic_menu_search"
-                    app:backgroundTint="@color/surface"
+                    app:backgroundTint="@color/map_control_background"
                     app:fabSize="mini"
-                    app:tint="@color/brand_charcoal" />
+                    app:tint="@color/map_control_icon" />
 
                 <com.google.android.material.floatingactionbutton.FloatingActionButton
                     android:id="@+id/fabMyLocation"
@@ -491,8 +552,8 @@
                     android:contentDescription="@string/my_location"
                     android:src="@android:drawable/ic_menu_mylocation"
                     app:fabSize="mini"
-                    app:tint="@color/brand_charcoal"
-                    app:backgroundTint="@color/surface" />
+                    app:tint="@color/map_control_icon"
+                    app:backgroundTint="@color/map_control_background" />
             </FrameLayout>
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>

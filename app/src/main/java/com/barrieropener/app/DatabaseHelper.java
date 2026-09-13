@@ -27,7 +27,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "barrieropener.db";
-    private static final int DATABASE_VERSION = 7; // Incremented version for closing settings
+    private static final int DATABASE_VERSION = 9; // Incremented version for the startup prompt's waits
 
     // Table name
     private static final String TABLE_BARRIERS = "barriers";
@@ -47,9 +47,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_WEBHOOK_SECRET = "webhook_secret";
     private static final String KEY_CLOSE_ON_DEPARTURE = "close_on_departure";
     private static final String KEY_CLOSE_ON_TIMER = "close_on_timer";
+    private static final String KEY_CLOSE_ON_PARK = "close_on_park";
     private static final String KEY_CLOSE_DELAY_MINUTES = "close_delay_minutes";
     private static final String KEY_CLOSE_URL = "close_url";
     private static final String KEY_CLOSE_SECRET = "close_secret";
+    private static final String KEY_STARTUP_WAIT_BELT = "startup_wait_belt";
+    private static final String KEY_STARTUP_WAIT_WARMUP = "startup_wait_warmup";
 
     // Create table SQL
     private static final String CREATE_TABLE_BARRIERS = "CREATE TABLE " + TABLE_BARRIERS +
@@ -69,7 +72,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_CLOSE_ON_TIMER + " INTEGER DEFAULT 0," +
             KEY_CLOSE_DELAY_MINUTES + " INTEGER DEFAULT " + Barrier.DEFAULT_CLOSE_DELAY_MINUTES + "," +
             KEY_CLOSE_URL + " TEXT," +
-            KEY_CLOSE_SECRET + " TEXT" +
+            KEY_CLOSE_SECRET + " TEXT," +
+            KEY_CLOSE_ON_PARK + " INTEGER DEFAULT 0," +
+            KEY_STARTUP_WAIT_BELT + " INTEGER DEFAULT 0," +
+            KEY_STARTUP_WAIT_WARMUP + " INTEGER DEFAULT 0" +
             ")";
 
     /** Column order used by every read below; keeps cursor indices and the projection in sync. */
@@ -77,7 +83,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_ID, KEY_NAME, KEY_PHONE, KEY_LATITUDE, KEY_LONGITUDE, KEY_HEADING,
             KEY_DETECTION_RADIUS, KEY_ZOOM_LEVEL, KEY_BARRIER_TYPE, KEY_ACTION_TYPE,
             KEY_WEBHOOK_URL, KEY_WEBHOOK_SECRET, KEY_CLOSE_ON_DEPARTURE, KEY_CLOSE_ON_TIMER,
-            KEY_CLOSE_DELAY_MINUTES, KEY_CLOSE_URL, KEY_CLOSE_SECRET
+            KEY_CLOSE_DELAY_MINUTES, KEY_CLOSE_URL, KEY_CLOSE_SECRET, KEY_CLOSE_ON_PARK,
+            KEY_STARTUP_WAIT_BELT, KEY_STARTUP_WAIT_WARMUP
     };
 
     public DatabaseHelper(Context context) {
@@ -123,6 +130,21 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_URL + " TEXT");
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_SECRET + " TEXT");
         }
+        if (oldVersion < 8) {
+            // Migration to 8 - the Park closing trigger. Off by default: a head unit that can't
+            // read the transmission would never fire it anyway, and the ones that can shouldn't
+            // start closing gates the user didn't ask them to.
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_CLOSE_ON_PARK + " INTEGER DEFAULT 0");
+        }
+        if (oldVersion < 9) {
+            // Migration to 9 - what the startup question waits for. Both off by default, so an
+            // existing barrier is offered at startup exactly as soon as it was before.
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_STARTUP_WAIT_BELT + " INTEGER DEFAULT 0");
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
+                    KEY_STARTUP_WAIT_WARMUP + " INTEGER DEFAULT 0");
+        }
     }
 
     /** Fills the shared column set; used by both insert and update. */
@@ -141,9 +163,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(KEY_WEBHOOK_SECRET, barrier.getWebhookSecret());
         values.put(KEY_CLOSE_ON_DEPARTURE, barrier.isCloseOnDeparture() ? 1 : 0);
         values.put(KEY_CLOSE_ON_TIMER, barrier.isCloseOnTimer() ? 1 : 0);
+        values.put(KEY_CLOSE_ON_PARK, barrier.isCloseOnPark() ? 1 : 0);
         values.put(KEY_CLOSE_DELAY_MINUTES, barrier.getCloseDelayMinutes());
         values.put(KEY_CLOSE_URL, barrier.getCloseUrl());
         values.put(KEY_CLOSE_SECRET, barrier.getCloseSecret());
+        values.put(KEY_STARTUP_WAIT_BELT, barrier.isStartupWaitForBelt() ? 1 : 0);
+        values.put(KEY_STARTUP_WAIT_WARMUP, barrier.isStartupWaitForWarmUp() ? 1 : 0);
         return values;
     }
 
@@ -171,6 +196,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         barrier.setCloseUrl(cursor.getString(15));
         barrier.setCloseSecret(cursor.getString(16));
+        barrier.setCloseOnPark(cursor.getInt(17) != 0);
+        barrier.setStartupWaitForBelt(cursor.getInt(18) != 0);
+        barrier.setStartupWaitForWarmUp(cursor.getInt(19) != 0);
         return barrier;
     }
 

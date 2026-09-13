@@ -18,7 +18,10 @@
 package com.barrieropener.app;
 
 import android.Manifest;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -45,6 +48,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -71,6 +75,7 @@ import java.util.ArrayList;
 public class AddEditBarrierActivity extends AppCompatActivity implements InputListener {
     private static final String TAG = "AddEditBarrier";
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
+    private static final int POWERTRAIN_PERMISSION_REQUEST_CODE = 2;
     private static final float ZOOM_STEP = 1f;
     private static final double DEFAULT_LATITUDE = 55.751244;  // Moscow Red Square
     private static final double DEFAULT_LONGITUDE = 37.618423;
@@ -86,8 +91,16 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private EditText editCloseUrl, editCloseSecret;
     private View phoneInputLayout, webhookInputLayout, webhookSecretInputLayout;
     private View closeSection, closeDelayContainer;
-    private com.google.android.material.materialswitch.MaterialSwitch switchCloseOnDeparture, switchCloseOnTimer;
+    private com.google.android.material.materialswitch.MaterialSwitch switchCloseOnDeparture, switchCloseOnTimer,
+            switchCloseOnPark, switchStartupWaitBelt, switchStartupWaitWarmUp;
     private SeekBar seekCloseDelay;
+    private TextView textParkStatus;
+    /** The same car readings as {@link #textParkStatus}, under the switches that depend on them. */
+    private TextView textStartupStatus;
+    /** Last probe of the car API; null until the first one comes back. */
+    private GearMonitor.Status gearStatus;
+    /** True while the form is being filled from the database, so setChecked() isn't read as a tap. */
+    private boolean bindingBarrier;
     private AddressSearch addressSearch;
     private TextView textCloseDelay;
     private MaterialButton actionCall, actionWebhook;
@@ -187,6 +200,28 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         closeDelayContainer = findViewById(R.id.closeDelayContainer);
         switchCloseOnDeparture = findViewById(R.id.switchCloseOnDeparture);
         switchCloseOnTimer = findViewById(R.id.switchCloseOnTimer);
+        switchCloseOnPark = findViewById(R.id.switchCloseOnPark);
+        textParkStatus = findViewById(R.id.textParkStatus);
+        textParkStatus.setVisibility(View.VISIBLE);
+        textParkStatus.setOnClickListener(v -> showGearDiagnostics());
+        // Reading the gearbox needs a runtime permission, and the driver has no adb in the car —
+        // so the form asks for it the moment the trigger is armed, and otherwise says out loud
+        // what it can and cannot see. Silently arming a trigger that can never fire is the one
+        // outcome worth ruling out here.
+        switchCloseOnPark.setOnCheckedChangeListener((v, checked) -> {
+            if (checked && !bindingBarrier) {
+                requestPowertrainPermission();
+            }
+        });
+        switchStartupWaitBelt = findViewById(R.id.switchStartupWaitBelt);
+        switchStartupWaitWarmUp = findViewById(R.id.switchStartupWaitWarmUp);
+        textStartupStatus = findViewById(R.id.textStartupStatus);
+        textStartupStatus.setOnClickListener(v -> showGearDiagnostics());
+        // The belt and the rpm come through the same car API as the gear, so arming either wait
+        // asks for the same permission — and brings up the readings that say whether it can work.
+        switchStartupWaitBelt.setOnCheckedChangeListener((v, checked) -> onStartupWaitChanged(checked));
+        switchStartupWaitWarmUp.setOnCheckedChangeListener((v, checked) -> onStartupWaitChanged(checked));
+        refreshGearStatus();
         seekCloseDelay = findViewById(R.id.seekCloseDelay);
         textCloseDelay = findViewById(R.id.textCloseDelay);
         editCloseUrl = findViewById(R.id.editCloseUrl);
@@ -297,6 +332,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         // Disable unnecessary gestures
         map.setRotateGesturesEnabled(false);
         map.setTiltGesturesEnabled(false);
+        // Follow the system theme: at night a daylight-white map is the brightest thing in the car.
+        map.setNightModeEnabled(isNightTheme());
 
         // Initialize map objects
         mapObjects = map.getMapObjects().addCollection();
@@ -313,12 +350,118 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     }
 
     /**
+     * Asks the car API what it can see, off the main thread — {@code createCar} binds to a system
+     * service and the legacy path waits for that bind, neither of which belongs on the UI thread.
+     */
+    private void onStartupWaitChanged(boolean checked) {
+        updateStartupStatusVisibility();
+        if (checked && !bindingBarrier) {
+            requestPowertrainPermission();
+        }
+    }
+
+    /** The readings line only matters while something waits on them. */
+    private void updateStartupStatusVisibility() {
+        boolean anyWait = switchStartupWaitBelt.isChecked() || switchStartupWaitWarmUp.isChecked();
+        textStartupStatus.setVisibility(anyWait ? View.VISIBLE : View.GONE);
+    }
+
+    private void setCarStatusText(CharSequence text) {
+        textParkStatus.setText(text);
+        textStartupStatus.setText(text);
+    }
+
+    private void refreshGearStatus() {
+        setCarStatusText(getString(R.string.park_status_checking));
+        new Thread(() -> {
+            GearMonitor.Status status = GearMonitor.probe(this);
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                gearStatus = status;
+                if (!status.carApiPresent) {
+                    textParkStatus.setText(R.string.close_on_park_unsupported);
+                    textStartupStatus.setText(R.string.startup_wait_unsupported);
+                } else if (status.gearReadable) {
+                    setCarStatusText(getString(R.string.park_status_gear,
+                            describeCarReadings(status)));
+                } else {
+                    setCarStatusText(getString(R.string.park_status_no_access));
+                }
+            });
+        }, "gear-probe").start();
+    }
+
+    /**
+     * The gear, plus the rpm and the driver's belt when the unit reports them. Those two hold the
+     * startup prompt back, so a dead sensor — a belt that reads "unbuckled" while the driver sits
+     * buckled in front of this screen — has to be visible without opening the report.
+     */
+    private String describeCarReadings(GearMonitor.Status status) {
+        StringBuilder text = new StringBuilder(GearMonitor.describeGear(status.gear));
+        if (status.engineRpm != null) {
+            text.append(", ").append(getString(R.string.park_status_rpm,
+                    GearMonitor.describeRpm(status.engineRpm)));
+        }
+        if (status.driverBuckled != null) {
+            text.append(", ").append(getString(status.driverBuckled
+                    ? R.string.park_status_belt_buckled : R.string.park_status_belt_unbuckled));
+        }
+        return text.toString();
+    }
+
+    private void requestPowertrainPermission() {
+        if (!GearMonitor.isSupportedOnDevice(this) || GearMonitor.hasPowertrainPermission(this)) {
+            return;
+        }
+        // CAR_POWERTRAIN is a dangerous permission on Automotive builds: declaring it in the
+        // manifest is not enough, and without the grant every read fails with a SecurityException.
+        ActivityCompat.requestPermissions(this,
+                new String[]{GearMonitor.PERMISSION_POWERTRAIN}, POWERTRAIN_PERMISSION_REQUEST_CODE);
+    }
+
+    /** The whole probe, verbatim and copyable — this is what gets sent back from the car. */
+    private void showGearDiagnostics() {
+        GearMonitor.Status status = gearStatus;
+        String report = status == null ? getString(R.string.park_status_checking) : status.report;
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(R.string.park_diagnostics_title)
+                .setMessage(report)
+                .setPositiveButton(R.string.park_diagnostics_copy, (d, w) -> copyReport(report))
+                .setNegativeButton(R.string.park_diagnostics_close, null);
+        if (status != null && status.carApiPresent && !status.permissionGranted) {
+            builder.setNeutralButton(R.string.park_diagnostics_request,
+                    (d, w) -> requestPowertrainPermission());
+        }
+        builder.show();
+    }
+
+    private void copyReport(String report) {
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null) {
+            return;
+        }
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.park_diagnostics_title),
+                report));
+        Toast.makeText(this, R.string.park_diagnostics_copied, Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean isNightTheme() {
+        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /**
      * Copies the closing block onto the barrier. Set through setters rather than the constructor
      * so the constructor doesn't grow a tail of optional arguments nobody can read at a glance.
      */
     private void applyClosingSettings(Barrier barrier, String closeUrl, String closeSecret) {
         barrier.setCloseOnDeparture(switchCloseOnDeparture.isChecked());
         barrier.setCloseOnTimer(switchCloseOnTimer.isChecked());
+        barrier.setCloseOnPark(switchCloseOnPark.isChecked());
+        barrier.setStartupWaitForBelt(switchStartupWaitBelt.isChecked());
+        barrier.setStartupWaitForWarmUp(switchStartupWaitWarmUp.isChecked());
         barrier.setCloseDelayMinutes(seekCloseDelay.getProgress() + MIN_CLOSE_DELAY_MIN);
         barrier.setCloseUrl(closeUrl);
         barrier.setCloseSecret(closeSecret);
@@ -472,6 +615,11 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == POWERTRAIN_PERMISSION_REQUEST_CODE) {
+            // Granted or not, re-probe: the status line and the diagnostics must show the truth.
+            refreshGearStatus();
+            return;
+        }
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission granted, get current location
@@ -518,6 +666,16 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
     private void loadBarrierData(long barrierId) {
         currentBarrier = dbHelper.getBarrier(barrierId);
+        bindingBarrier = true;
+        try {
+            fillForm();
+        } finally {
+            bindingBarrier = false;
+        }
+    }
+
+    /** Splits the actual filling out so the caller can hold the "not a user tap" flag around it. */
+    private void fillForm() {
         if (currentBarrier != null) {
             editName.setText(currentBarrier.getName());
             editPhone.setText(currentBarrier.getPhoneNumber());
@@ -527,6 +685,9 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             editCloseSecret.setText(currentBarrier.getCloseSecret());
             switchCloseOnDeparture.setChecked(currentBarrier.isCloseOnDeparture());
             switchCloseOnTimer.setChecked(currentBarrier.isCloseOnTimer());
+            switchCloseOnPark.setChecked(currentBarrier.isCloseOnPark());
+            switchStartupWaitBelt.setChecked(currentBarrier.isStartupWaitForBelt());
+            switchStartupWaitWarmUp.setChecked(currentBarrier.isStartupWaitForWarmUp());
             int delay = Math.max(MIN_CLOSE_DELAY_MIN,
                     Math.min(MAX_CLOSE_DELAY_MIN, currentBarrier.getCloseDelayMinutes()));
             seekCloseDelay.setProgress(delay - MIN_CLOSE_DELAY_MIN);

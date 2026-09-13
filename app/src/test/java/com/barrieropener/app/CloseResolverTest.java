@@ -19,6 +19,7 @@ package com.barrieropener.app;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -93,5 +94,64 @@ public class CloseResolverTest {
         Barrier b = webhookBarrier(true, true, 1);
         assertEquals(CloseResolver.Reason.DEPARTURE,
                 CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 500));
+    }
+
+    @Test
+    public void park_firesOnlyWhenItsOwnTriggerIsOn() {
+        Barrier b = webhookBarrier(true, true, 3);
+        assertNull(CloseResolver.evaluateOnPark(b, 0));
+
+        b.setCloseOnPark(true);
+        assertEquals(CloseResolver.Reason.PARK, CloseResolver.evaluateOnPark(b, 0));
+    }
+
+    @Test
+    public void park_firesOnlyInsideTheZone() {
+        Barrier b = webhookBarrier(false, false, 3);
+        b.setCloseOnPark(true);
+        // 50 m radius: parking at the gate counts, parking a street away does not.
+        assertEquals(CloseResolver.Reason.PARK, CloseResolver.evaluateOnPark(b, 50));
+        assertNull(CloseResolver.evaluateOnPark(b, 51));
+    }
+
+    @Test
+    public void park_withoutFixDoesNotFire() {
+        // Parking is where the gearbox says so; without a fix that could be anywhere.
+        Barrier b = webhookBarrier(false, false, 3);
+        b.setCloseOnPark(true);
+        assertNull(CloseResolver.evaluateOnPark(b, -1));
+    }
+
+    @Test
+    public void timer_doesNotFireOutsideTheZone() {
+        // Driven away: that is the departure trigger's business, not the timer's.
+        Barrier b = webhookBarrier(false, true, 1);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 500));
+    }
+
+    @Test
+    public void timer_withoutFixDoesNotFire() {
+        Barrier b = webhookBarrier(false, true, 1);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, -1));
+    }
+
+    @Test
+    public void park_isTheOnlyTriggerABarrierNeeds() {
+        // Neither distance nor time is enabled — shifting into Park is enough on its own, and the
+        // barrier still has to count as closable for the pending-close bookkeeping to arm.
+        Barrier b = webhookBarrier(false, false, 3);
+        b.setCloseOnPark(true);
+        assertTrue(b.isClosable());
+        assertEquals(CloseResolver.Reason.PARK, CloseResolver.evaluateOnPark(b, 10));
+        // ...and it stays quiet on the periodic path, which knows nothing about the gearbox.
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000));
+    }
+
+    @Test
+    public void park_callBarrierNeverAsks() {
+        Barrier b = webhookBarrier(false, false, 3);
+        b.setCloseOnPark(true);
+        b.setActionType(Barrier.ActionType.CALL);
+        assertNull(CloseResolver.evaluateOnPark(b, 0));
     }
 }

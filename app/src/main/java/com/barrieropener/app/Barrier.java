@@ -83,7 +83,13 @@ public class Barrier {
     private boolean closeOnDeparture;
     /** Ask to close once {@link #closeDelayMinutes} have passed since opening. */
     private boolean closeOnTimer;
+    /** Ask to close when the driver shifts into Park — i.e. the car has arrived and stopped. */
+    private boolean closeOnPark;
     private int closeDelayMinutes = DEFAULT_CLOSE_DELAY_MINUTES;
+    /** Hold the startup "open it?" question until the driver has buckled up. */
+    private boolean startupWaitForBelt;
+    /** Hold the startup "open it?" question until the engine has come down from its fast idle. */
+    private boolean startupWaitForWarmUp;
     /** Endpoint for the closing request; empty means "reuse the opening request". */
     private String closeUrl;
     /** Secret for the closing request; only consulted when {@link #closeUrl} is set. */
@@ -130,13 +136,16 @@ public class Barrier {
     public ActionType getActionType() { return actionType; }
     public boolean isCloseOnDeparture() { return closeOnDeparture; }
     public boolean isCloseOnTimer() { return closeOnTimer; }
+    public boolean isCloseOnPark() { return closeOnPark; }
     public int getCloseDelayMinutes() { return closeDelayMinutes; }
+    public boolean isStartupWaitForBelt() { return startupWaitForBelt; }
+    public boolean isStartupWaitForWarmUp() { return startupWaitForWarmUp; }
     public String getCloseUrl() { return closeUrl; }
     public String getCloseSecret() { return closeSecret; }
 
     /** True when this barrier asks to be closed at all. Only webhook barriers can. */
     public boolean isClosable() {
-        return actionType == ActionType.WEBHOOK && (closeOnDeparture || closeOnTimer);
+        return actionType == ActionType.WEBHOOK && (closeOnDeparture || closeOnTimer || closeOnPark);
     }
     public double getLatitude() { return latitude; }
     public double getLongitude() { return longitude; }
@@ -154,7 +163,10 @@ public class Barrier {
     public void setActionType(ActionType actionType) { this.actionType = actionType; }
     public void setCloseOnDeparture(boolean closeOnDeparture) { this.closeOnDeparture = closeOnDeparture; }
     public void setCloseOnTimer(boolean closeOnTimer) { this.closeOnTimer = closeOnTimer; }
+    public void setCloseOnPark(boolean closeOnPark) { this.closeOnPark = closeOnPark; }
     public void setCloseDelayMinutes(int closeDelayMinutes) { this.closeDelayMinutes = closeDelayMinutes; }
+    public void setStartupWaitForBelt(boolean startupWaitForBelt) { this.startupWaitForBelt = startupWaitForBelt; }
+    public void setStartupWaitForWarmUp(boolean startupWaitForWarmUp) { this.startupWaitForWarmUp = startupWaitForWarmUp; }
     public void setCloseUrl(String closeUrl) { this.closeUrl = closeUrl; }
     public void setCloseSecret(String closeSecret) { this.closeSecret = closeSecret; }
     public void setLatitude(double latitude) { this.latitude = latitude; }

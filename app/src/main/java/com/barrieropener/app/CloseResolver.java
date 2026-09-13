@@ -29,9 +29,17 @@ package com.barrieropener.app;
  *       The margin is hysteresis, not distance: it only has to outlast GPS jitter around the edge
  *       of the zone, so the question comes as soon as the car is actually out rather than a block
  *       later.</li>
- *   <li><b>Timer</b> — the configured number of minutes has passed since opening, which covers the
- *       case where the car never drives away (parked inside) or GPS never reports the departure.</li>
+ *   <li><b>Timer</b> — the configured number of minutes has passed since opening <i>and</i> the car
+ *       is still inside the zone. That is the case it exists for: the car drove in and stayed
+ *       (parked inside), or GPS never reported the departure.</li>
+ *   <li><b>Park</b> — the driver shifted into Park inside the zone, so the car has arrived and
+ *       stopped. Unlike the other two this is an event rather than a state, so it arrives through
+ *       {@link #evaluateOnPark} instead of the periodic {@link #evaluate} call.</li>
  * </ul>
+ *
+ * <p>Both of those are gated on being in the zone, and deliberately stay silent when there is no
+ * fix at all: a question about a gate the car may be kilometres away from is worse than a gate
+ * left open, and "away from the gate" is what the departure trigger is for.
  */
 public final class CloseResolver {
 
@@ -46,10 +54,31 @@ public final class CloseResolver {
         /** The car drove away from the barrier. */
         DEPARTURE,
         /** The configured delay elapsed. */
-        TIMER
+        TIMER,
+        /** The transmission was put into Park. */
+        PARK
     }
 
     private CloseResolver() {}
+
+    /**
+     * The Park trigger: the gearbox says the journey is over. Time doesn't enter into it, but
+     * distance does — parking two districts away says nothing about this gate.
+     *
+     * @param distanceM current distance to the barrier, or a negative value when unknown (no fix)
+     * @return {@link Reason#PARK} when this barrier should be offered for closing now, else null
+     */
+    public static Reason evaluateOnPark(Barrier barrier, double distanceM) {
+        if (barrier == null || !barrier.isClosable() || !barrier.isCloseOnPark()) {
+            return null;
+        }
+        return isInZone(barrier, distanceM) ? Reason.PARK : null;
+    }
+
+    /** Inside the detection radius, and known to be: an unknown distance is not "inside". */
+    private static boolean isInZone(Barrier barrier, double distanceM) {
+        return distanceM >= 0 && distanceM <= barrier.getDetectionRadius();
+    }
 
     /**
      * @param openedAtMs when the driver confirmed opening
@@ -65,7 +94,7 @@ public final class CloseResolver {
                 && distanceM > barrier.getDetectionRadius() + DEPARTURE_MARGIN_M) {
             return Reason.DEPARTURE;
         }
-        if (barrier.isCloseOnTimer()) {
+        if (barrier.isCloseOnTimer() && isInZone(barrier, distanceM)) {
             long elapsed = nowMs - openedAtMs;
             if (elapsed >= barrier.getCloseDelayMinutes() * 60_000L) {
                 return Reason.TIMER;

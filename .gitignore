@@ -6,3 +6,7 @@ local.properties
 .DS_Store
 **/.DS_Store
 /docs/README.md
+/CLAUDE.md
+
+# Local secrets: release signing and the Telegram bot that ships APKs to the car
+.env

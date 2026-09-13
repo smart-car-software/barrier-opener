@@ -27,6 +27,7 @@ import android.location.Location;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -50,16 +51,41 @@ public class LocationService extends Service {
     /** How often the timer-based closing trigger is re-evaluated without a fresh GPS fix. */
     private static final long CLOSE_TICK_MS = 15_000L;
 
+    /**
+     * How long after the service starts the "you're parked in a zone — open it?" question stays on
+     * offer. It exists for the moment the engine is switched on, so it waits for GPS and the network
+     * to come up (tens of seconds on a cold head unit) but gives up well before it could surprise
+     * someone with a popup unrelated to starting the car.
+     */
+    private static final long STARTUP_PROMPT_WINDOW_MS = 5 * 60_000L;
+
+    /**
+     * How long the startup question waits for the car API to say whether it can read the engine and
+     * the belt at all. Its connect is bounded well under this; the cap is for a vendor service that hangs, which
+     * must not take the question down with it.
+     */
+    private static final long CAR_API_WAIT_MS = 20_000L;
+
     private LocationManager locationManager;
     private BarrierRepository repository;
     private TriggerStateStore triggerState;
     private PendingCloseStore pendingClose;
+    private GearMonitor gearMonitor;
+    private HostReachability hostReachability;
     private Location lastLocation;
+    /** True until the startup question has been asked, or its window has run out. */
+    private boolean startupPromptPending;
+    private long startupPromptDeadline;
+    private long startupPromptArmedAt;
     private final Handler closeTicker = new Handler(Looper.getMainLooper());
     private final Runnable closeTick = new Runnable() {
         @Override
         public void run() {
             checkPendingCloses(repository.getAll(), lastLocation);
+            // The startup question is retried here too: a car standing still can stop producing
+            // fixes altogether (the provider filters by distance), and the network usually joins
+            // seconds after the first fix rather than before it.
+            offerStartupOpenFromLastFix();
             closeTicker.postDelayed(this, CLOSE_TICK_MS);
         }
     };
@@ -72,6 +98,12 @@ public class LocationService extends Service {
         triggerState = new TriggerStateStore(this);
         pendingClose = new PendingCloseStore(this);
         locationManager = new LocationManager(this);
+        gearMonitor = new GearMonitor(this);
+        hostReachability = new HostReachability();
+        // Armed here rather than in onStartCommand: MainActivity re-issues startForegroundService
+        // on every resume, and re-arming there would greet the driver with an "open the gate?"
+        // popup every time they came back to the app while parked at home.
+        armStartupPrompt();
     }
 
     @Override
@@ -89,6 +121,19 @@ public class LocationService extends Service {
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, createNotification());
         startLocationUpdates();
+        gearMonitor.start(new GearMonitor.Listener() {
+            @Override
+            public void onShiftedToPark() {
+                LocationService.this.onShiftedToPark();
+            }
+
+            @Override
+            public void onCarStateChanged() {
+                // The driver buckling up, the engine settling or the car API answering is what a
+                // waiting startup question is waiting for; don't leave it to the next 15 s tick.
+                offerStartupOpenFromLastFix();
+            }
+        });
         closeTicker.removeCallbacks(closeTick);
         closeTicker.postDelayed(closeTick, CLOSE_TICK_MS);
 
@@ -168,6 +213,10 @@ public class LocationService extends Service {
                 BarrierDetector.Fix.from(location),
                 id -> triggerState.isTriggered(id));
 
+        if (offerStartupOpen(res.inZone)) {
+            return; // The startup question is on screen; don't stack detection on top of it.
+        }
+
         if (res.primary == null) {
             return; // Nothing new to suggest by direction.
         }
@@ -183,6 +232,112 @@ public class LocationService extends Service {
             for (Barrier b : res.freshMatches) {
                 triggerState.markTriggered(b.getId());
             }
+        }
+    }
+
+    /**
+     * Arms the startup question. The service being created is the app's proxy for "the engine was
+     * just switched on": on a head unit BootReceiver starts it, and boot is the ignition.
+     */
+    private void armStartupPrompt() {
+        startupPromptPending = true;
+        startupPromptArmedAt = SystemClock.elapsedRealtime();
+        startupPromptDeadline = startupPromptArmedAt + STARTUP_PROMPT_WINDOW_MS;
+    }
+
+    /**
+     * Asks whether to open the barrier the car is parked inside, once — the driver has just got in
+     * and wants the gate opening before they set off.
+     *
+     * <p>Deliberately bypasses the suppression flag: the barrier is almost always still marked
+     * triggered from driving in yesterday, which is precisely what keeps the normal path quiet
+     * here. Marking it triggered again afterwards stops the driving path from re-asking as the car
+     * pulls away.
+     *
+     * @return true when the question has been put and the caller should not also run detection
+     */
+    private boolean offerStartupOpen(List<Barrier> inZone) {
+        if (!startupPromptPending) {
+            return false;
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (now > startupPromptDeadline) {
+            startupPromptPending = false;
+            return false;
+        }
+        Barrier barrier = StartupPromptResolver.candidate(inZone);
+        if (barrier == null) {
+            return false; // Not standing in anyone's zone.
+        }
+        boolean carApiAnswered = gearMonitor.hasAnswered()
+                || now - startupPromptArmedAt > CAR_API_WAIT_MS;
+        switch (StartupPromptResolver.carGate(barrier, carApiAnswered, gearMonitor.isInPark(),
+                gearMonitor.isDriverBuckled(), gearMonitor.engineRpm())) {
+            case WAIT_FOR_CAR_API:
+                return false; // onCarStateChanged re-runs this once the car API has answered.
+            case WAITING_FOR_DRIVER:
+            case WARMING_UP:
+                // A remote start or a cold winter warm-up can outlast the whole window. The window
+                // is about not surprising a driver long after they started the car; a car still
+                // standing in the zone, parked, waiting for its driver or its engine, hasn't set
+                // off yet — so it waits. The unit going to sleep is what ends it: elapsed time
+                // keeps counting through sleep, so the deadline is long gone by the next wake.
+                startupPromptDeadline = Math.max(startupPromptDeadline,
+                        now + STARTUP_PROMPT_WINDOW_MS);
+                return false;
+            case READY:
+                break;
+        }
+        if (StartupPromptResolver.needsReachableHost(barrier)
+                && !hostReachability.isReadyFor(barrier, false)) {
+            // The engine has just been started and Wi-Fi is still coming up: probe, and let the
+            // probe itself re-run this the moment the gate's endpoint answers.
+            hostReachability.probe(BarrierAction.urlFor(barrier, false),
+                    this::offerStartupOpenFromLastFix);
+            return false;
+        }
+        // Same rule as the driving path: only a question that actually reached the driver counts as
+        // asked, otherwise the next fix retries.
+        if (!triggerBarrierPopup(barrier, inZone)) {
+            return false;
+        }
+        startupPromptPending = false;
+        triggerState.markTriggered(barrier.getId());
+        return true;
+    }
+
+    /** The tick's route into {@link #offerStartupOpen}; it has no fix of its own to work from. */
+    private void offerStartupOpenFromLastFix() {
+        if (!startupPromptPending || lastLocation == null) {
+            return;
+        }
+        NearbyResolver.Resolution res = NearbyResolver.resolve(
+                repository.getAll(),
+                BarrierDetector.Fix.from(lastLocation),
+                id -> triggerState.isTriggered(id));
+        offerStartupOpen(res.inZone);
+    }
+
+    /**
+     * The Park closing trigger: the gearbox says the journey is over, so every gate opened on the
+     * way here and configured for it gets its closing question now.
+     */
+    private void onShiftedToPark() {
+        Map<Long, Long> pending = pendingClose.all();
+        if (pending.isEmpty()) {
+            return;
+        }
+        if (lastLocation == null) {
+            // Without a fix there is no way to tell this gate's yard from a car park across town.
+            Log.d(TAG, "Shifted into Park, but there is no fix to place the car by");
+            return;
+        }
+        for (Barrier b : repository.getAll()) {
+            if (!pending.containsKey(b.getId())
+                    || CloseResolver.evaluateOnPark(b, distanceTo(b)) == null) {
+                continue;
+            }
+            offerClose(b, CloseResolver.Reason.PARK);
         }
     }
 
@@ -207,21 +362,60 @@ public class LocationService extends Service {
                 pendingClose.clear(b.getId());
                 continue;
             }
-            double distance = -1;
-            if (location != null) {
-                float[] d = new float[1];
-                Location.distanceBetween(location.getLatitude(), location.getLongitude(),
-                        b.getLatitude(), b.getLongitude(), d);
-                distance = d[0];
-            }
-            CloseResolver.Reason reason = CloseResolver.evaluate(b, openedAt, now, distance);
+            CloseResolver.Reason reason = CloseResolver.evaluate(b, openedAt, now,
+                    distanceFrom(location, b));
             if (reason != null) {
-                Log.d(TAG, "Offering to close " + b.getName() + " (" + reason + ")");
-                triggerClosePopup(b);
-                // Asked once; the popup clears the entry when the driver answers or it times out.
-                pendingClose.clear(b.getId());
+                offerClose(b, reason);
             }
         }
+    }
+
+    /**
+     * Puts the closing question — but only once the gate's endpoint is actually reachable. Until
+     * then the pending entry is deliberately left standing: "ask once" must not be spent on a
+     * question whose "Yes" would fail, and the next tick retries.
+     */
+    private void offerClose(Barrier barrier, CloseResolver.Reason reason) {
+        if (!hostReachability.isReadyFor(barrier, true)) {
+            // Park is an event, not a state: re-running the periodic check would not bring it back,
+            // so the retry is bound to this barrier and this reason.
+            long barrierId = barrier.getId();
+            hostReachability.probe(BarrierAction.urlFor(barrier, true),
+                    () -> retryClose(barrierId, reason));
+            return;
+        }
+        Log.d(TAG, "Offering to close " + barrier.getName() + " (" + reason + ")");
+        triggerClosePopup(barrier);
+        // Asked once; the popup clears the entry when the driver answers or it times out.
+        pendingClose.clear(barrier.getId());
+    }
+
+    /** The endpoint answered after we deferred: put the question now, if it is still pending. */
+    private void retryClose(long barrierId, CloseResolver.Reason reason) {
+        if (pendingClose.openedAt(barrierId) == 0L) {
+            return; // Answered, cleared or expired while we were waiting for the host.
+        }
+        for (Barrier barrier : repository.getAll()) {
+            if (barrier.getId() == barrierId && barrier.isClosable()) {
+                offerClose(barrier, reason);
+                return;
+            }
+        }
+    }
+
+    /** Metres from the last known fix to the barrier; negative when there is no fix to measure from. */
+    private double distanceTo(Barrier barrier) {
+        return distanceFrom(lastLocation, barrier);
+    }
+
+    private static double distanceFrom(Location location, Barrier barrier) {
+        if (location == null) {
+            return -1;
+        }
+        float[] distance = new float[1];
+        Location.distanceBetween(location.getLatitude(), location.getLongitude(),
+                barrier.getLatitude(), barrier.getLongitude(), distance);
+        return distance[0];
     }
 
     private void triggerClosePopup(Barrier barrier) {
@@ -318,6 +512,8 @@ public class LocationService extends Service {
         super.onDestroy();
         _isStarted = false;
         closeTicker.removeCallbacks(closeTick);
+        gearMonitor.stop();
+        hostReachability.shutdown();
         locationManager.stopLocationUpdates();
         repository.unregisterInvalidator();
     }

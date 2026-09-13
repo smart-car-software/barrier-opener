@@ -29,7 +29,9 @@ import org.json.JSONObject;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
@@ -85,6 +87,33 @@ public final class WebhookHelper {
             URL parsed = new URL(trimmed);
             return parsed.getHost() != null && !parsed.getHost().isEmpty();
         } catch (MalformedURLException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether the endpoint's host accepts a TCP connection right now. Blocking — call it off the
+     * main thread.
+     *
+     * <p>Deliberately only a socket connect, never an HTTP request: the URL on the other end is a
+     * webhook that opens a gate, and "checking" it by calling it would open the gate. What this
+     * answers is exactly the question worth asking before the popup appears — is the home network
+     * up yet — because a head unit joins Wi-Fi seconds after the engine starts, and until then a
+     * confirmed "Yes" would fail with nothing but a toast to show for it.
+     */
+    public static boolean isHostReachable(String url, int timeoutMs) {
+        if (!isValidUrl(url)) {
+            return false;
+        }
+        try {
+            URL parsed = new URL(url.trim());
+            int port = parsed.getPort() != -1 ? parsed.getPort() : parsed.getDefaultPort();
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(parsed.getHost(), port), timeoutMs);
+                return true;
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Host not reachable yet: " + e);
             return false;
         }
     }

@@ -29,6 +29,10 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Reading the transmission (the Park closing trigger). Only means anything on head units
+         that ship the android.car API; everywhere else it is an unknown permission the system
+         ignores, and GearMonitor simply reports the feature as unavailable. -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
 
     <!--
       All hardware features are declared "not required" so the APK installs on head units that
@@ -55,6 +59,10 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.BarrierOpener">
+
+        <!-- android.car is a system library present only on Automotive-based units. Optional, and
+             reached through reflection, so the APK still installs and runs on units without it. -->
+        <uses-library android:name="android.car" android:required="false" />
 
         <!-- Main Activity -->
         <activity

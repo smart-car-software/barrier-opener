@@ -23,4 +23,7 @@
     <color name="text_primary">#FFF1F3F4</color>
     <color name="text_secondary">#FFB8BCC2</color>
     <color name="outline">#FF3A3D45</color>
+
+    <!-- The map itself switches to MapKit's night style, so the FAB icons have to go light too. -->
+    <color name="map_control_icon">@color/text_primary</color>
 </resources>
