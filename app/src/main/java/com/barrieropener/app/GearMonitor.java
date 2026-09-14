@@ -106,8 +106,6 @@ public class GearMonitor {
     private static final long POLL_MS = 2_000L;
     /** The legacy connect is asynchronous; this is how long we wait for the service to bind. */
     private static final long LEGACY_CONNECT_TIMEOUT_MS = 5_000L;
-    /** Reconnaissance dumps are read on a car screen and pasted into a chat — keep them finite. */
-    private static final int MAX_DUMPED_NAMES = 60;
 
     // --- ECarX AdaptAPI: the vendor SDK on Geely head units, present in the system classpath.
     private static final String ECARX_CAR_CLASS = "com.ecarx.xui.adaptapi.car.Car";
@@ -158,32 +156,6 @@ public class GearMonitor {
     /** Where a usable gear reading came from. */
     private enum Source { NONE, PROPERTY, SENSOR, VENDOR }
 
-    /** What {@link #probe} found — enough for the edit screen to explain itself to the driver. */
-    public static final class Status {
-        public final boolean carApiPresent;
-        public final boolean permissionGranted;
-        public final boolean gearReadable;
-        /** Raw {@code VehicleGear} value, or null when it could not be read. */
-        public final Integer gear;
-        /** Engine speed in rpm, or null when this unit doesn't give it to us. */
-        public final Float engineRpm;
-        /** Driver's belt: true buckled, false unbuckled, null when it can't be read. */
-        public final Boolean driverBuckled;
-        /** Technical, untranslated: this is what gets copied into a bug report. */
-        public final String report;
-
-        Status(boolean carApiPresent, boolean permissionGranted, boolean gearReadable,
-               Integer gear, Float engineRpm, Boolean driverBuckled, String report) {
-            this.carApiPresent = carApiPresent;
-            this.permissionGranted = permissionGranted;
-            this.gearReadable = gearReadable;
-            this.gear = gear;
-            this.engineRpm = engineRpm;
-            this.driverBuckled = driverBuckled;
-            this.report = report;
-        }
-    }
-
     /** One source, resolved: the managers it needed and the reading that proved it works. */
     private static final class Detection {
         Source source = Source.NONE;
@@ -224,9 +196,6 @@ public class GearMonitor {
     /** Set once the first connection attempt has finished, successfully or not. */
     private volatile boolean answered;
 
-    /** Report of the service's own last connection attempt, appended to what the diagnostics show. */
-    private static volatile String lastServiceReport = "";
-
     public GearMonitor(Context context) {
         this.context = context.getApplicationContext();
     }
@@ -249,62 +218,6 @@ public class GearMonitor {
     public static boolean hasPowertrainPermission(Context context) {
         return ContextCompat.checkSelfPermission(context, PERMISSION_POWERTRAIN)
                 == PackageManager.PERMISSION_GRANTED;
-    }
-
-    public static String lastServiceReport() {
-        return lastServiceReport;
-    }
-
-    /**
-     * Connects, reads the gear once and disconnects, describing every step on the way. Blocking —
-     * call it off the main thread. Written for the head unit itself: the driver has no adb, so this
-     * report is the only way the failure ever reaches anyone who can act on it.
-     */
-    public static Status probe(Context context) {
-        StringBuilder r = new StringBuilder();
-        Class<?> carClass = carClass();
-        r.append("android.car.Car: ").append(carClass != null ? "present" : "MISSING").append('\n');
-
-        boolean granted = hasPowertrainPermission(context);
-        r.append(PERMISSION_POWERTRAIN).append(": ").append(granted ? "granted" : "DENIED")
-                .append('\n');
-        r.append("vendor APIs: ").append(vendorApis()).append('\n');
-        r.append("vendor surface: ").append(vendorApiSurface()).append('\n');
-
-        boolean anyCarApi = carClass != null || vendorApiPresent();
-        if (!anyCarApi) {
-            return new Status(false, granted, false, null, null, null, r.toString());
-        }
-
-        Object car = null;
-        Detection detection = new Detection();
-        Float rpm = null;
-        Boolean buckled = null;
-        try {
-            // The vendor SDK is tried first and needs no android.car at all; the standard route
-            // only runs when it has nothing to say.
-            detection = detectVendor(context, r);
-            if (detection.source == Source.NONE && carClass != null) {
-                car = openCar(context, r);
-                if (car != null) {
-                    r.append("car services: ").append(describeCarServices(car)).append('\n');
-                    detection = detect(context, car, r);
-                }
-            }
-            rpm = readEngineRpm(detection, r);
-            buckled = readDriverBelt(detection, r);
-        } catch (Throwable t) {
-            r.append("probe failed: ").append(t).append('\n');
-        } finally {
-            disconnect(car);
-        }
-
-        String service = lastServiceReport;
-        if (!service.isEmpty()) {
-            r.append("--- service ---\n").append(service);
-        }
-        return new Status(true, granted, detection.source != Source.NONE, detection.gear, rpm,
-                buckled, r.toString());
     }
 
     /** "P", "D", … plus the raw value, because a vendor may use a value we don't have a name for. */
@@ -425,8 +338,7 @@ public class GearMonitor {
             stopInternal();
             markUnavailable();
         } finally {
-            lastServiceReport = r.toString();
-            Log.d(TAG, lastServiceReport.trim());
+            Log.d(TAG, r.toString().trim());
             answered = true;
             notifyCarStateChanged();
         }
@@ -647,7 +559,7 @@ public class GearMonitor {
         });
     }
 
-    // --- source detection, shared by the live monitor and the probe -----------------------------
+    // --- source detection ----------------------------------------------------------------------
 
     /**
      * Tries every gear source in order and returns the first one that yields a real reading.
@@ -665,8 +577,6 @@ public class GearMonitor {
 
         d.propertyManager = getCarManager(car, PROPERTY_SERVICE, r);
         if (d.propertyManager != null) {
-            r.append("gear properties: ").append(describeGearProperties(d.propertyManager))
-                    .append('\n');
             for (int property : GEAR_PROPERTIES) {
                 Integer value = readProperty(d.propertyManager, property, r);
                 if (isValidGear(value)) {
@@ -678,15 +588,8 @@ public class GearMonitor {
             }
         }
 
-        if (d.propertyManager != null) {
-            // Both standard ids came back unusable: dump what this unit does publish, so a vendor
-            // property carrying the gear can be recognised without another trip to the car.
-            r.append("properties: ").append(describeAllProperties(d.propertyManager)).append('\n');
-        }
-
         d.sensorManager = getCarManager(car, SENSOR_SERVICE, r);
         if (d.sensorManager != null) {
-            r.append("sensors: ").append(describeSensors(d.sensorManager)).append('\n');
             Integer value = readSensor(d.sensorManager, r);
             if (isValidGear(value)) {
                 d.source = Source.SENSOR;
@@ -857,13 +760,13 @@ public class GearMonitor {
         }
     }
 
-    /** For the report: "buckled", "unbuckled" or "?". */
+    /** For the log: "buckled", "unbuckled" or "?". */
     private static String describeBelt(Boolean buckled) {
         return buckled == null ? "?" : buckled ? "buckled" : "unbuckled";
     }
 
-    /** Whole rpm for the screen; "?" when there is no reading. */
-    public static String describeRpm(Float rpm) {
+    /** Whole rpm for the log; "?" when there is no reading. */
+    private static String describeRpm(Float rpm) {
         return rpm == null ? "?" : String.valueOf(Math.round(rpm));
     }
 
@@ -967,40 +870,6 @@ public class GearMonitor {
                 r.append("getLatestSensorEvent(gear): ").append(rootCause(t)).append('\n');
             }
             return null;
-        }
-    }
-
-    /** Which of the two gear properties the car service admits to having. */
-    private static String describeGearProperties(Object manager) {
-        StringBuilder found = new StringBuilder();
-        for (int property : GEAR_PROPERTIES) {
-            try {
-                Object available = Class.forName(PROPERTY_MANAGER_CLASS)
-                        .getMethod("isPropertyAvailable", int.class, int.class)
-                        .invoke(manager, property, 0);
-                found.append(property).append('=').append(available).append(' ');
-            } catch (Throwable t) {
-                found.append(property).append("=?(").append(rootCause(t)).append(") ");
-            }
-        }
-        return found.toString().trim();
-    }
-
-    /** The sensor ids this unit publishes — tells us at a glance whether the gear is among them. */
-    private static String describeSensors(Object manager) {
-        try {
-            Object supported = Class.forName(SENSOR_MANAGER_CLASS)
-                    .getMethod("getSupportedSensors").invoke(manager);
-            if (supported == null) {
-                return "null";
-            }
-            StringBuilder ids = new StringBuilder();
-            for (int i = 0; i < Array.getLength(supported); i++) {
-                ids.append(Array.get(supported, i)).append(',');
-            }
-            return ids.length() == 0 ? "none" : ids.toString();
-        } catch (Throwable t) {
-            return String.valueOf(rootCause(t));
         }
     }
 
@@ -1161,111 +1030,6 @@ public class GearMonitor {
             car.getClass().getMethod("disconnect").invoke(car);
         } catch (Throwable t) {
             Log.d(TAG, "Error while disconnecting from the car service: " + t);
-        }
-    }
-
-    /** Names of the vendor car SDKs we know of, so an unsupported unit still says something useful. */
-    private static String vendorApis() {
-        String[] candidates = {
-                "com.ecarx.xui.adaptapi.car.Car",
-                "com.ecarx.xui.adaptapi.car.vehicle.IVehicle",
-                SENSOR_MANAGER_CLASS,
-        };
-        StringBuilder found = new StringBuilder();
-        for (String name : candidates) {
-            try {
-                Class.forName(name);
-                found.append(name).append(' ');
-            } catch (Throwable ignored) {
-                // Absent; nothing to report for this one.
-            }
-        }
-        return found.length() == 0 ? "none" : found.toString().trim();
-    }
-
-    /**
-     * The vendor SDK's own method names. Nothing calls them yet: on a unit where every standard
-     * route is a dead end, this is the reconnaissance that decides what the next version talks to,
-     * and it is dumped whole because the interesting method turned out not to be called "gear".
-     */
-    private static String vendorApiSurface() {
-        String[] classes = {
-                "com.ecarx.xui.adaptapi.car.Car",
-                "com.ecarx.xui.adaptapi.car.vehicle.IVehicle",
-        };
-        StringBuilder found = new StringBuilder();
-        for (String className : classes) {
-            try {
-                Class<?> type = Class.forName(className);
-                found.append('\n').append(type.getSimpleName()).append(": ");
-                int printed = 0;
-                for (Method method : type.getMethods()) {
-                    if (method.getDeclaringClass() == Object.class) {
-                        continue;
-                    }
-                    if (printed++ >= MAX_DUMPED_NAMES) {
-                        found.append("…");
-                        break;
-                    }
-                    found.append(method.getName()).append('/')
-                            .append(method.getParameterCount()).append(' ');
-                }
-            } catch (Throwable ignored) {
-                // SDK absent on this unit.
-            }
-        }
-        return found.length() == 0 ? "none" : found.toString().trim();
-    }
-
-    /** Which car managers this firmware actually has; a vendor one may be where the gear lives. */
-    private static String describeCarServices(Object car) {
-        Class<?> carClass = carClass();
-        if (carClass == null) {
-            return "none";
-        }
-        StringBuilder found = new StringBuilder();
-        try {
-            Method getCarManager = car.getClass().getMethod("getCarManager", String.class);
-            for (Field field : carClass.getFields()) {
-                if (!field.getName().endsWith("_SERVICE") || field.getType() != String.class) {
-                    continue;
-                }
-                String service = String.valueOf(field.get(null));
-                String mark;
-                try {
-                    mark = getCarManager.invoke(car, service) != null ? "+" : "-";
-                } catch (Throwable t) {
-                    mark = "!"; // Present but refused us — usually a missing permission.
-                }
-                found.append(service).append(mark).append(' ');
-            }
-        } catch (Throwable t) {
-            return String.valueOf(rootCause(t));
-        }
-        return found.length() == 0 ? "none" : found.toString().trim();
-    }
-
-    /** Every property id this unit publishes, so a vendor-specific gear can be spotted by hand. */
-    private static String describeAllProperties(Object manager) {
-        try {
-            Object list = Class.forName(PROPERTY_MANAGER_CLASS)
-                    .getMethod("getPropertyList").invoke(manager);
-            if (!(list instanceof Iterable)) {
-                return String.valueOf(list);
-            }
-            StringBuilder ids = new StringBuilder();
-            int count = 0;
-            for (Object config : (Iterable<?>) list) {
-                if (count++ >= MAX_DUMPED_NAMES) {
-                    ids.append("…");
-                    break;
-                }
-                Object id = config.getClass().getMethod("getPropertyId").invoke(config);
-                ids.append("0x").append(Integer.toHexString((Integer) id)).append(' ');
-            }
-            return count == 0 ? "empty list" : count + ": " + ids.toString().trim();
-        } catch (Throwable t) {
-            return String.valueOf(rootCause(t));
         }
     }
 

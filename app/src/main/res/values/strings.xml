@@ -169,17 +169,6 @@
     <string name="close_on_timer">Ask after a delay</string>
     <string name="close_on_park">Ask when shifting into Park</string>
     <string name="close_on_park_unsupported">This head unit doesn\'t report the transmission, so this trigger will never fire on it</string>
-    <string name="park_status_checking">Transmission: checking…</string>
-    <string name="park_status_gear">Transmission: %1$s — tap for diagnostics</string>
-    <string name="park_status_rpm">engine: %1$s rpm</string>
-    <string name="park_status_belt_buckled">belt buckled</string>
-    <string name="park_status_belt_unbuckled">belt unbuckled</string>
-    <string name="park_status_no_access">No access to the transmission — tap for diagnostics</string>
-    <string name="park_diagnostics_title">Transmission diagnostics</string>
-    <string name="park_diagnostics_copy">Copy</string>
-    <string name="park_diagnostics_request">Request access</string>
-    <string name="park_diagnostics_close">Close</string>
-    <string name="park_diagnostics_copied">Report copied to the clipboard</string>
     <string name="close_delay_label">Delay</string>
 
     <!-- Permission flow -->

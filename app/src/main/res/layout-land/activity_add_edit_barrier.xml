@@ -197,7 +197,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
                                 android:paddingVertical="6dp"
-                                android:text="@string/park_status_checking"
+                                android:text="@string/startup_wait_unsupported"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="12sp"
                                 android:visibility="gone" />
@@ -285,7 +285,7 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
                                 android:paddingVertical="6dp"
-                                android:text="@string/park_status_checking"
+                                android:text="@string/close_on_park_unsupported"
                                 android:textColor="@color/text_secondary"
                                 android:textSize="12sp"
                                 android:visibility="gone" />
