@@ -98,6 +98,64 @@ public class NearbyResolverTest {
         assertEquals(2, res.inZone.size());                   // both still in the zone
     }
 
+    /** A bidirectional barrier the car is standing inside, which needs no bearing to match. */
+    private static Barrier bidirectional(long id, double meters, double bearingFromCar,
+                                         double radius) {
+        double[] p = dest(meters, bearingFromCar);
+        Barrier b = new Barrier();
+        b.setId(id);
+        b.setLatitude(p[0]);
+        b.setLongitude(p[1]);
+        b.setDetectionRadius(radius);
+        b.setBarrierType(Barrier.BarrierType.BIDIRECTIONAL);
+        return b;
+    }
+
+    /** Car standing still, with the bearing a just-woken GPS invents out of noise. */
+    private static BarrierDetector.Fix carStandingStill() {
+        return new BarrierDetector.Fix(LAT, LON, true, 0.0, true, 0.0);
+    }
+
+    @Test
+    public void parkedInsideAZone_isNoDirectionalMatch_butStillInZone() {
+        Barrier gate = bidirectional(1, 20, 0, 50);
+
+        NearbyResolver.Resolution res = NearbyResolver.resolve(
+                Collections.singletonList(gate), carStandingStill(), id -> false, true);
+
+        assertNull(res.primary);                              // in Park: not driving up to anything
+        assertTrue(res.freshMatches.isEmpty());               // and nothing to suppress either
+        assertEquals(1, res.inZone.size());                   // the startup question still sees it
+    }
+
+    @Test
+    public void sameCarOutOfPark_matches() {
+        Barrier gate = bidirectional(1, 20, 0, 50);
+
+        NearbyResolver.Resolution res = NearbyResolver.resolve(
+                Collections.singletonList(gate), carStandingStill(), id -> false, false);
+
+        assertNotNull(res.primary);                           // gear unknown or a driving gear
+        assertEquals(1, res.primary.getId());
+    }
+
+    @Test
+    public void onlyAnApproachedBarrier_isADirectionalMatch() {
+        // Two identical gates, both in range and both pointed at; only the one the car has driven
+        // into from outside is offered. The other is listed, never suggested.
+        Barrier approached = bidirectional(1, 20, 0, 50);
+        Barrier standingInside = bidirectional(2, 20, 90, 50);
+
+        NearbyResolver.Resolution res = NearbyResolver.resolve(
+                Arrays.asList(approached, standingInside), carHeadingNorth(),
+                id -> false, id -> id == 1, false);
+
+        assertNotNull(res.primary);
+        assertEquals(1, res.primary.getId());
+        assertEquals(1, res.freshMatches.size());
+        assertEquals(2, res.inZone.size());
+    }
+
     @Test
     public void noBarriersInRange_primaryNull() {
         Barrier farAway = oneWay(1, 500, 0, 0, 50);

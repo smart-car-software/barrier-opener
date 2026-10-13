@@ -38,11 +38,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class BarrierPopupActivity extends AppCompatActivity {
     private static final String TAG = "BarrierPopupActivity";
-    private static final long AUTO_DISMISS_DELAY_MS = 10_000L;
+    /**
+     * How long the question stays on screen before it dismisses itself. Long enough to be answered
+     * by a driver who is still buckling up or has just looked away, and still short enough to be
+     * gone by the time the car reaches the gate.
+     */
+    private static final long AUTO_DISMISS_DELAY_MS = 30_000L;
     private static final long COUNTDOWN_TICK_MS = 1_000L;
 
     private SoundPool soundPool;
@@ -52,6 +58,9 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     private TextView barrierNameText;
     private TextView autoDismissText;
+    /** gate-api only: what the gate reports while the question is up. */
+    private TextView gateStateText;
+    private final GateStatePoller gatePoller = new GateStatePoller(this::renderGateState);
     private Button btnWait;
     private CountDownTimer countdown;
 
@@ -116,6 +125,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         boolean primaryChanged = primaryId != previousPrimaryId;
 
         updateUI();
+        bindGateState();
         // Force a re-render of the nearby list for this (possibly new) primary barrier.
         lastNearbySignature = null;
         buildNearbyList();
@@ -184,6 +194,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void initViews() {
         barrierNameText = findViewById(R.id.textBarrierName);
         autoDismissText = findViewById(R.id.textAutoDismiss);
+        gateStateText = findViewById(R.id.textGateState);
 
         findViewById(R.id.btnYes).setOnClickListener(v -> confirmAction());
         findViewById(R.id.btnNo).setOnClickListener(v -> dismissPopup());
@@ -340,6 +351,47 @@ public class BarrierPopupActivity extends AppCompatActivity {
         autoDismissText.setVisibility(View.VISIBLE);
         autoDismissText.setText(getString(R.string.auto_dismiss,
                 (int) (AUTO_DISMISS_DELAY_MS / 1000L)));
+    }
+
+    /**
+     * A gate-api gate can say where it is, so the question shows it — "Open the gate?" over
+     * "Gate: closed" reads very differently from the same words over "Gate: opening…". Polled only
+     * while the popup is up; see {@link GateStatePoller}.
+     */
+    private void bindGateState() {
+        boolean gateApi = primaryBarrier != null
+                && primaryBarrier.getActionType() == Barrier.ActionType.GATE_API;
+        gateStateText.setVisibility(gateApi ? View.VISIBLE : View.GONE);
+        if (!gateApi) {
+            gatePoller.stop();
+            return;
+        }
+        gatePoller.setBarriers(Collections.singletonList(primaryBarrier));
+        renderGateState();
+        gatePoller.start();
+    }
+
+    private void renderGateState() {
+        if (primaryBarrier == null || gateStateText.getVisibility() != View.VISIBLE) {
+            return;
+        }
+        GateIndicator.Reading reading = gatePoller.readingFor(primaryBarrier);
+        String label = GateApiClient.describeState(this, reading.state);
+        gateStateText.setText(reading.stale
+                ? getString(R.string.gate_state_stale, label) : label);
+        gateStateText.setTextColor(getColor(reading.stale ? R.color.text_secondary : R.color.text_primary));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        gatePoller.start();
+    }
+
+    @Override
+    protected void onPause() {
+        gatePoller.stop();
+        super.onPause();
     }
 
     private void restartCountdown() {

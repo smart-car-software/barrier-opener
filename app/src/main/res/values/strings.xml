@@ -157,6 +157,35 @@
     <string name="webhook_http_error">Request failed: HTTP %1$d</string>
     <string name="webhook_failed">Request failed: %1$s</string>
 
+    <!-- gate-api: explicit commands plus a live gate state -->
+    <string name="action_type_gate_api">Gate API</string>
+    <string name="hint_api_base_url">Gate API address</string>
+    <string name="hint_api_base_url_helper">Scheme and host only, e.g. https://gate-api.example.com</string>
+    <string name="hint_api_token">Access token</string>
+    <string name="hint_api_token_helper">Issued by the gate owner, one per car. Sent as a Bearer header.</string>
+    <string name="error_api_token_required">Access token is required</string>
+    <string name="gate_check">Check</string>
+    <string name="gate_check_running">Checking…</string>
+    <string name="gate_check_ok">Service answered. Gate: %1$s</string>
+    <string name="gate_check_failed">Check failed: %1$s</string>
+    <string name="gate_api_section">Gate API</string>
+    <string name="gate_cmd_open">Open</string>
+    <string name="gate_cmd_close">Close</string>
+    <string name="gate_state_closed">Closed</string>
+    <string name="gate_state_open">Open</string>
+    <string name="gate_state_opening">Opening…</string>
+    <string name="gate_state_closing">Closing…</string>
+    <string name="gate_state_partial">Ajar</string>
+    <string name="gate_state_unknown">Unknown</string>
+    <string name="gate_state_stale">%1$s · data is stale</string>
+    <string name="gate_command_accepted">Command accepted</string>
+    <string name="gate_already_open">Gate «%1$s» is already open</string>
+    <string name="gate_already_closed">Gate «%1$s» is already closed</string>
+    <string name="gate_error_unauthorized">Wrong access token</string>
+    <string name="gate_error_cooldown">Too soon, wait %1$d s</string>
+    <string name="gate_error_ha_unavailable">Home Assistant is unreachable</string>
+    <string name="gate_error_network">No connection to the gate service</string>
+
     <!-- Startup prompt -->
     <string name="startup_section">When the car starts</string>
     <string name="startup_wait_belt">Wait until the driver buckles up</string>
@@ -170,6 +199,8 @@
     <string name="close_on_park">Ask when shifting into Park</string>
     <string name="close_on_park_unsupported">This head unit doesn\'t report the transmission, so this trigger will never fire on it</string>
     <string name="close_delay_label">Delay</string>
+    <string name="label_close_radius">Closing radius</string>
+    <string name="label_close_radius_hint">Closing is offered once the car has been within this distance of the gate and then moved out past it. Keep it small: just past the gate.</string>
 
     <!-- Permission flow -->
     <string name="permission_background_location_title">Background location required</string>

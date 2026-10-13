@@ -107,4 +107,7 @@ dependencies {
     implementation libs.yandex.mapkit
 
     testImplementation 'junit:junit:4.13.2'
+    // The android.jar on the unit-test classpath stubs org.json out; the real library lets the
+    // gate-api state parser be tested on the JVM like the rest of the decision layer.
+    testImplementation 'org.json:json:20240303'
 }

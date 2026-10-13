@@ -62,10 +62,12 @@ public class StartupPromptResolverTest {
     }
 
     @Test
-    public void onlyWebhookBarriersWaitForTheirHost() {
+    public void onlyRequestBarriersWaitForTheirHost() {
         // Dialling a GSM relay needs no network at all, so it is offered the moment GPS lands.
         assertTrue(StartupPromptResolver.needsReachableHost(
                 barrier("gate", Barrier.ActionType.WEBHOOK)));
+        assertTrue(StartupPromptResolver.needsReachableHost(
+                barrier("gate", Barrier.ActionType.GATE_API)));
         assertFalse(StartupPromptResolver.needsReachableHost(
                 barrier("shlagbaum", Barrier.ActionType.CALL)));
         assertFalse(StartupPromptResolver.needsReachableHost(null));

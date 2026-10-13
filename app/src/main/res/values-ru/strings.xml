@@ -157,6 +157,35 @@
     <string name="webhook_http_error">Запрос не прошёл: HTTP %1$d</string>
     <string name="webhook_failed">Запрос не прошёл: %1$s</string>
 
+    <!-- gate-api: явные команды и живое состояние ворот -->
+    <string name="action_type_gate_api">Gate API</string>
+    <string name="hint_api_base_url">Адрес Gate API</string>
+    <string name="hint_api_base_url_helper">Только схема и хост, например https://gate-api.example.com</string>
+    <string name="hint_api_token">Токен доступа</string>
+    <string name="hint_api_token_helper">Выдаёт владелец ворот, один на машину. Уходит заголовком Bearer.</string>
+    <string name="error_api_token_required">Требуется токен доступа</string>
+    <string name="gate_check">Проверить</string>
+    <string name="gate_check_running">Проверяем…</string>
+    <string name="gate_check_ok">Сервис ответил. Ворота: %1$s</string>
+    <string name="gate_check_failed">Проверка не прошла: %1$s</string>
+    <string name="gate_api_section">Gate API</string>
+    <string name="gate_cmd_open">Открыть</string>
+    <string name="gate_cmd_close">Закрыть</string>
+    <string name="gate_state_closed">Закрыты</string>
+    <string name="gate_state_open">Открыты</string>
+    <string name="gate_state_opening">Открываются…</string>
+    <string name="gate_state_closing">Закрываются…</string>
+    <string name="gate_state_partial">Приоткрыты</string>
+    <string name="gate_state_unknown">Неизвестно</string>
+    <string name="gate_state_stale">%1$s · данные устарели</string>
+    <string name="gate_command_accepted">Команда принята</string>
+    <string name="gate_already_open">Ворота «%1$s» уже открыты</string>
+    <string name="gate_already_closed">Ворота «%1$s» уже закрыты</string>
+    <string name="gate_error_unauthorized">Неверный токен</string>
+    <string name="gate_error_cooldown">Слишком рано, подожди %1$d с</string>
+    <string name="gate_error_ha_unavailable">Home Assistant недоступен</string>
+    <string name="gate_error_network">Нет связи с сервером ворот</string>
+
     <!-- Permission flow -->
     <string name="permission_background_location_title">Требуется фоновое местоположение</string>
     <string name="permission_background_location_message">Чтобы обнаруживать шлагбаумы во время движения, приложению нужен доступ к местоположению «Всегда». На следующем экране выберите соответствующий вариант.</string>
@@ -181,6 +210,8 @@
     <string name="close_on_park">Спрашивать при переводе в паркинг</string>
     <string name="close_on_park_unsupported">Эта магнитола не сообщает положение коробки передач — на ней триггер не сработает</string>
     <string name="close_delay_label">Задержка</string>
+    <string name="label_close_radius">Радиус закрытия</string>
+    <string name="label_close_radius_hint">Закрыть предложим после того, как машина побывала ближе этого расстояния к воротам и затем вышла за него. Держите маленьким: сразу за воротами.</string>
 
     <!-- Service notification -->
     <string name="notification_action_stop">Остановить</string>

@@ -40,6 +40,8 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private BarrierListAdapter adapter;
     private PermissionFlow permissionFlow;
+    /** Keeps the gate-api rows' state pills current while the list is on screen; idle otherwise. */
+    private GateStatePoller gatePoller;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +50,11 @@ public class MainActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         permissionFlow = new PermissionFlow(this);
+        gatePoller = new GateStatePoller(() -> {
+            if (adapter != null) {
+                adapter.notifyDataSetChanged();
+            }
+        });
 
         initViews();
         loadBarriers();
@@ -96,6 +103,15 @@ public class MainActivity extends AppCompatActivity {
         loadBarriers();
         startLocationServiceIfReady();
         updateStatusPill();
+        gatePoller.start();
+    }
+
+    @Override
+    protected void onPause() {
+        // Polling is for someone looking at the list; in the background it would only wake the
+        // network every two seconds for a pill nobody sees.
+        gatePoller.stop();
+        super.onPause();
     }
 
     @Override
@@ -119,8 +135,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void loadBarriers() {
         List<Barrier> barriers = dbHelper.getAllBarriers();
+        gatePoller.setBarriers(barriers);
         if (adapter == null) {
             adapter = new BarrierListAdapter(this, this::loadBarriers, barriers, dbHelper);
+            adapter.setGatePoller(gatePoller);
             barrierListView.setAdapter(adapter);
         } else {
             adapter.updateBarriers(barriers);

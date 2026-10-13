@@ -82,12 +82,18 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private static final int MAX_HEADING = 359; // degrees (0 and 360 are equivalent)
     private static final int DEFAULT_HEADING = 0; // degrees
     private static final int MIN_CLOSE_DELAY_MIN = 1;
+    private static final int MIN_CLOSE_RADIUS = 5; // meters: about a car length past the gate
     private static final int MAX_CLOSE_DELAY_MIN = 30;
 
     private EditText editName, editPhone, editWebhookUrl, editWebhookSecret, editLatitude, editLongitude;
     private EditText editCloseUrl, editCloseSecret;
+    private EditText editApiBaseUrl, editApiToken;
     private View phoneInputLayout, webhookInputLayout, webhookSecretInputLayout;
-    private View closeSection, closeDelayContainer;
+    private View gateApiSection, closeUrlInputLayout, closeSecretInputLayout;
+    private TextView textGateCheck;
+    private View closeSection, closeDelayContainer, closeRadiusContainer;
+    private SeekBar seekCloseRadius;
+    private TextView textCloseRadius;
     private com.google.android.material.materialswitch.MaterialSwitch switchCloseOnDeparture, switchCloseOnTimer,
             switchCloseOnPark, switchStartupWaitBelt, switchStartupWaitWarmUp;
     private SeekBar seekCloseDelay;
@@ -97,7 +103,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private boolean bindingBarrier;
     private AddressSearch addressSearch;
     private TextView textCloseDelay;
-    private MaterialButton actionCall, actionWebhook;
+    private MaterialButton actionCall, actionWebhook, actionGateApi;
     private SeekBar seekRadius, seekHeading;
     private TextView textRadius, textHeading;
     private MaterialButton radioBidirectional, radioOneWay;
@@ -190,6 +196,14 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         webhookSecretInputLayout = findViewById(R.id.webhookSecretInputLayout);
         actionCall = findViewById(R.id.actionCall);
         actionWebhook = findViewById(R.id.actionWebhook);
+        actionGateApi = findViewById(R.id.actionGateApi);
+        gateApiSection = findViewById(R.id.gateApiSection);
+        editApiBaseUrl = findViewById(R.id.editApiBaseUrl);
+        editApiToken = findViewById(R.id.editApiToken);
+        textGateCheck = findViewById(R.id.textGateCheck);
+        findViewById(R.id.btnGateCheck).setOnClickListener(v -> checkGateApi());
+        closeUrlInputLayout = findViewById(R.id.closeUrlInputLayout);
+        closeSecretInputLayout = findViewById(R.id.closeSecretInputLayout);
         closeSection = findViewById(R.id.closeSection);
         closeDelayContainer = findViewById(R.id.closeDelayContainer);
         switchCloseOnDeparture = findViewById(R.id.switchCloseOnDeparture);
@@ -238,8 +252,34 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         // The delay only means something for the timer trigger, so it follows that switch.
         switchCloseOnTimer.setOnCheckedChangeListener((v, checked) ->
                 closeDelayContainer.setVisibility(checked ? View.VISIBLE : View.GONE));
-        // The closing circle appears and disappears with its own trigger.
-        switchCloseOnDeparture.setOnCheckedChangeListener((v, checked) -> updatePlacemark());
+        // The closing radius only matters to the departure trigger, so it follows that switch — and
+        // so does the orange circle on the map.
+        closeRadiusContainer = findViewById(R.id.closeRadiusContainer);
+        seekCloseRadius = findViewById(R.id.seekCloseRadius);
+        textCloseRadius = findViewById(R.id.textCloseRadius);
+        seekCloseRadius.setMax(MAX_RADIUS - MIN_CLOSE_RADIUS);
+        seekCloseRadius.setProgress(DEFAULT_RADIUS - MIN_CLOSE_RADIUS);
+        textCloseRadius.setText(getString(R.string.distance_meters, DEFAULT_RADIUS));
+        seekCloseRadius.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                textCloseRadius.setText(getString(R.string.distance_meters,
+                        progress + MIN_CLOSE_RADIUS));
+                updatePlacemark();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+        switchCloseOnDeparture.setOnCheckedChangeListener((v, checked) -> {
+            closeRadiusContainer.setVisibility(checked ? View.VISIBLE : View.GONE);
+            updatePlacemark();
+        });
         editLatitude = findViewById(R.id.editLatitude);
         editLongitude = findViewById(R.id.editLongitude);
         seekRadius = findViewById(R.id.seekRadius);
@@ -250,12 +290,12 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         radioOneWay = findViewById(R.id.radioOneWay);
         headingContainer = findViewById(R.id.headingContainer);
 
-        // Call vs. HTTP request: only the field belonging to the selected action stays visible,
-        // so the form never asks for a phone number a webhook barrier doesn't have.
+        // Call vs. HTTP request vs. gate-api: only the fields belonging to the selected action
+        // stay visible, so the form never asks for a phone number a webhook barrier doesn't have.
         MaterialButtonToggleGroup toggleActionType = findViewById(R.id.toggleActionType);
         toggleActionType.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
-            applyActionTypeVisibility(checkedId == R.id.actionWebhook);
+            applyActionTypeVisibility(checkedActionType());
             updatePlacemark();
         });
 
@@ -381,17 +421,90 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         barrier.setStartupWaitForBelt(switchStartupWaitBelt.isChecked());
         barrier.setStartupWaitForWarmUp(switchStartupWaitWarmUp.isChecked());
         barrier.setCloseDelayMinutes(seekCloseDelay.getProgress() + MIN_CLOSE_DELAY_MIN);
+        barrier.setCloseRadius(currentCloseRadiusMeters());
         barrier.setCloseUrl(closeUrl);
         barrier.setCloseSecret(closeSecret);
     }
 
-    private void applyActionTypeVisibility(boolean isWebhook) {
-        phoneInputLayout.setVisibility(isWebhook ? View.GONE : View.VISIBLE);
+    private Barrier.ActionType checkedActionType() {
+        if (actionGateApi.isChecked()) {
+            return Barrier.ActionType.GATE_API;
+        }
+        return actionWebhook.isChecked() ? Barrier.ActionType.WEBHOOK : Barrier.ActionType.CALL;
+    }
+
+    private void applyActionTypeVisibility(Barrier.ActionType type) {
+        boolean isWebhook = type == Barrier.ActionType.WEBHOOK;
+        boolean isGateApi = type == Barrier.ActionType.GATE_API;
+        boolean isRequest = isWebhook || isGateApi;
+        phoneInputLayout.setVisibility(isRequest ? View.GONE : View.VISIBLE);
         webhookInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
         webhookSecretInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+        gateApiSection.setVisibility(isGateApi ? View.VISIBLE : View.GONE);
         // Closing is a request too, so it is offered only where opening is one: a GSM barrier's
         // repeat call is a toggle whose effect we cannot predict.
-        closeSection.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+        closeSection.setVisibility(isRequest ? View.VISIBLE : View.GONE);
+        // A gate-api gate has an explicit close; only a webhook needs a second URL for it.
+        closeUrlInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+        closeSecretInputLayout.setVisibility(isWebhook ? View.VISIBLE : View.GONE);
+        if (isGateApi && !bindingBarrier && dbHelper != null
+                && isBlank(editApiBaseUrl) && isBlank(editApiToken)) {
+            prefillGateApiFromLastBarrier();
+        }
+    }
+
+    private static boolean isBlank(EditText field) {
+        return field.getText() == null || field.getText().toString().trim().isEmpty();
+    }
+
+    /**
+     * One service serves every gate, so a second gate-api barrier starts with the address and
+     * token of the last one saved — typing a token on a car screen is the thing to spare.
+     */
+    private void prefillGateApiFromLastBarrier() {
+        Barrier last = null;
+        for (Barrier b : dbHelper.getAllBarriers()) {
+            if (b.getActionType() == Barrier.ActionType.GATE_API
+                    && GateApiClient.isValidBaseUrl(b.getApiBaseUrl())
+                    && (last == null || b.getId() > last.getId())) {
+                last = b;
+            }
+        }
+        if (last != null) {
+            editApiBaseUrl.setText(last.getApiBaseUrl());
+            editApiToken.setText(last.getApiToken());
+        }
+    }
+
+    /**
+     * "Check" asks the service for the gate's state with the token typed in — it proves the
+     * address and the token at once, and a 401 surfaces here rather than at the first real press
+     * at the gate. A GET only: nothing moves.
+     */
+    private void checkGateApi() {
+        String baseUrl = GateApiClient.normalizeBaseUrl(editApiBaseUrl.getText().toString());
+        String token = editApiToken.getText().toString().trim();
+        if (!GateApiClient.isValidBaseUrl(baseUrl)) {
+            editApiBaseUrl.setError(getString(R.string.error_webhook_invalid_url));
+            editApiBaseUrl.requestFocus();
+            return;
+        }
+        textGateCheck.setText(R.string.gate_check_running);
+        GateApiClient.fetchState(baseUrl, token, new GateApiClient.Callback() {
+            @Override
+            public void onSuccess(GateState state) {
+                if (isFinishing() || isDestroyed()) return;
+                textGateCheck.setText(getString(R.string.gate_check_ok,
+                        GateApiClient.describeState(AddEditBarrierActivity.this, state.state)));
+            }
+
+            @Override
+            public void onFailure(GateApiClient.Failure failure) {
+                if (isFinishing() || isDestroyed()) return;
+                textGateCheck.setText(getString(R.string.gate_check_failed,
+                        GateApiClient.describeFailure(AddEditBarrierActivity.this, failure)));
+            }
+        });
     }
 
     /**
@@ -601,6 +714,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             editWebhookSecret.setText(currentBarrier.getWebhookSecret());
             editCloseUrl.setText(currentBarrier.getCloseUrl());
             editCloseSecret.setText(currentBarrier.getCloseSecret());
+            editApiBaseUrl.setText(currentBarrier.getApiBaseUrl());
+            editApiToken.setText(currentBarrier.getApiToken());
             switchCloseOnDeparture.setChecked(currentBarrier.isCloseOnDeparture());
             switchCloseOnTimer.setChecked(currentBarrier.isCloseOnTimer());
             switchCloseOnPark.setChecked(currentBarrier.isCloseOnPark());
@@ -612,10 +727,25 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             textCloseDelay.setText(getString(R.string.duration_minutes, delay));
             closeDelayContainer.setVisibility(
                     currentBarrier.isCloseOnTimer() ? View.VISIBLE : View.GONE);
+            // A barrier saved before the setting existed shows the radius it has been using.
+            int closeRadius = (int) Math.max(MIN_CLOSE_RADIUS,
+                    Math.min(MAX_RADIUS, currentBarrier.getCloseRadiusMeters()));
+            seekCloseRadius.setProgress(closeRadius - MIN_CLOSE_RADIUS);
+            textCloseRadius.setText(getString(R.string.distance_meters, closeRadius));
+            closeRadiusContainer.setVisibility(
+                    currentBarrier.isCloseOnDeparture() ? View.VISIBLE : View.GONE);
 
-            boolean isWebhook = currentBarrier.getActionType() == Barrier.ActionType.WEBHOOK;
-            (isWebhook ? actionWebhook : actionCall).setChecked(true);
-            applyActionTypeVisibility(isWebhook);
+            switch (currentBarrier.getActionType()) {
+                case WEBHOOK:
+                    actionWebhook.setChecked(true);
+                    break;
+                case GATE_API:
+                    actionGateApi.setChecked(true);
+                    break;
+                default:
+                    actionCall.setChecked(true);
+            }
+            applyActionTypeVisibility(currentBarrier.getActionType());
 
             selectedPoint = new Point(currentBarrier.getLatitude(), currentBarrier.getLongitude());
             updateLocationFields();
@@ -716,10 +846,11 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
             int radius = currentRadiusMeters();
 
-            // The closing zone goes first so the smaller opening circle stays readable on top of it.
+            // The closing threshold in orange: usually well inside the blue detection circle now
+            // that the two radii are independent, sometimes outside it.
             if (showsCloseRadius()) {
                 CircleMapObject closeCircle = mapObjects.addCircle(new Circle(selectedPoint,
-                        (float) (radius + CloseResolver.DEPARTURE_MARGIN_M)));
+                        (float) (currentCloseRadiusMeters() + CloseResolver.DEPARTURE_MARGIN_M)));
                 closeCircle.setStrokeWidth(2f);
                 closeCircle.setStrokeColor(0x66FF6600); // Semi-transparent orange stroke
                 closeCircle.setFillColor(0x11FF6600);   // Barely-there orange fill
@@ -749,12 +880,16 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         return seekRadius.getProgress() + MIN_RADIUS;
     }
 
+    private int currentCloseRadiusMeters() {
+        return seekCloseRadius.getProgress() + MIN_CLOSE_RADIUS;
+    }
+
     /**
      * The closing circle is only meaningful for the departure trigger — the timer isn't spatial —
      * and only webhook barriers can close at all.
      */
     private boolean showsCloseRadius() {
-        return actionWebhook.isChecked() && switchCloseOnDeparture.isChecked();
+        return checkedActionType() != Barrier.ActionType.CALL && switchCloseOnDeparture.isChecked();
     }
 
     private Bitmap getBitmapFromVectorDrawable(int drawableId) {
@@ -793,7 +928,10 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         String webhookSecret = editWebhookSecret.getText().toString().trim();
         String closeUrl = editCloseUrl.getText().toString().trim();
         String closeSecret = editCloseSecret.getText().toString().trim();
-        boolean isWebhook = actionWebhook.isChecked();
+        String apiBaseUrl = GateApiClient.normalizeBaseUrl(editApiBaseUrl.getText().toString());
+        String apiToken = editApiToken.getText().toString().trim();
+        Barrier.ActionType actionType = checkedActionType();
+        boolean isWebhook = actionType == Barrier.ActionType.WEBHOOK;
 
         if (name.isEmpty()) {
             editName.setError(getString(R.string.error_name_required));
@@ -818,6 +956,18 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
                 editCloseUrl.requestFocus();
                 return;
             }
+        } else if (actionType == Barrier.ActionType.GATE_API) {
+            if (!GateApiClient.isValidBaseUrl(apiBaseUrl)) {
+                editApiBaseUrl.setError(getString(R.string.error_webhook_invalid_url));
+                editApiBaseUrl.requestFocus();
+                return;
+            }
+            // Unlike the webhook secret the token is not optional: the service answers 401 without it.
+            if (apiToken.isEmpty()) {
+                editApiToken.setError(getString(R.string.error_api_token_required));
+                editApiToken.requestFocus();
+                return;
+            }
         } else if (phone.isEmpty()) {
             editPhone.setError(getString(R.string.error_phone_required));
             editPhone.requestFocus();
@@ -831,8 +981,6 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
 
         boolean isOneWay = radioOneWay.isChecked();
         double heading = isOneWay ? seekHeading.getProgress() : 0;
-        Barrier.ActionType actionType =
-                isWebhook ? Barrier.ActionType.WEBHOOK : Barrier.ActionType.CALL;
 
         float currentZoom = map.getCameraPosition().getZoom();
 
@@ -851,6 +999,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
                     isOneWay ? Barrier.BarrierType.ONE_WAY : Barrier.BarrierType.BIDIRECTIONAL
             );
 
+            currentBarrier.setApiBaseUrl(apiBaseUrl);
+            currentBarrier.setApiToken(apiToken);
             applyClosingSettings(currentBarrier, closeUrl, closeSecret);
             long id = dbHelper.addBarrier(currentBarrier);
             currentBarrier.setId(id);
@@ -861,6 +1011,8 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             currentBarrier.setPhoneNumber(phone);
             currentBarrier.setWebhookUrl(webhookUrl);
             currentBarrier.setWebhookSecret(webhookSecret);
+            currentBarrier.setApiBaseUrl(apiBaseUrl);
+            currentBarrier.setApiToken(apiToken);
             currentBarrier.setLatitude(selectedPoint.getLatitude());
             currentBarrier.setLongitude(selectedPoint.getLongitude());
             currentBarrier.setHeading(heading);

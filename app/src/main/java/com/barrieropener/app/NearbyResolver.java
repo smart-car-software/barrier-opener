@@ -38,6 +38,11 @@ public final class NearbyResolver {
         boolean isTriggered(long barrierId);
     }
 
+    /** Whether the car drove into this barrier's zone from outside; see {@link ApproachTracker}. */
+    public interface ApproachedPredicate {
+        boolean hasApproached(long barrierId);
+    }
+
     public static final class Resolution {
         public final Barrier primary;
         public final List<Barrier> freshMatches;
@@ -52,8 +57,39 @@ public final class NearbyResolver {
 
     private NearbyResolver() {}
 
+    /** For callers with no gear to go by; the car is then treated as possibly driving. */
     public static Resolution resolve(List<Barrier> barriers, BarrierDetector.Fix fix,
                                      TriggeredPredicate triggered) {
+        return resolve(barriers, fix, triggered, false);
+    }
+
+    /**
+     * @param parked true only when the car is <i>known</i> to be in Park — an unreadable gear, or a
+     *               unit with no car API, passes false and behaves as it always did.
+     *
+     * <p>A car in Park is going nowhere, so it cannot be approaching a gate, and nothing it is
+     * standing inside is a directional match. The fix says otherwise often enough to matter: a
+     * head unit's GPS comes up a good while after the engine does, and its first fixes carry a
+     * bearing made of noise and a speed of zero — which for a bidirectional barrier is enough to
+     * look exactly like a car driving in. The result was the gate being offered to a driver who
+     * had not yet done up their belt. The in-zone list is still filled: the startup question is
+     * built from it, and that one has its own idea of when the driver is ready.
+     */
+    public static Resolution resolve(List<Barrier> barriers, BarrierDetector.Fix fix,
+                                     TriggeredPredicate triggered, boolean parked) {
+        return resolve(barriers, fix, triggered, id -> true, parked);
+    }
+
+    /**
+     * @param approached true only for barriers whose zone the car has <i>entered</i> from outside
+     *                   and not left since. Being inside is not enough for a directional match: a
+     *                   car standing inside the zone gets a bearing with every fix, and one of them
+     *                   will point at the gate eventually. Callers without a fix history pass
+     *                   {@code id -> true}; the in-zone list ignores it either way.
+     */
+    public static Resolution resolve(List<Barrier> barriers, BarrierDetector.Fix fix,
+                                     TriggeredPredicate triggered, ApproachedPredicate approached,
+                                     boolean parked) {
         List<Barrier> inZone = new ArrayList<>();
         List<Barrier> freshMatches = new ArrayList<>();
 
@@ -63,7 +99,9 @@ public final class NearbyResolver {
                 continue;
             }
             inZone.add(barrier);
-            if (r == BarrierDetector.Result.IN_RANGE && !triggered.isTriggered(barrier.getId())) {
+            if (!parked && r == BarrierDetector.Result.IN_RANGE
+                    && approached.hasApproached(barrier.getId())
+                    && !triggered.isTriggered(barrier.getId())) {
                 freshMatches.add(barrier);
             }
         }

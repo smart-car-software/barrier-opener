@@ -47,6 +47,21 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp"
                 tools:text="One-way" />
+
+            <!-- gate-api only: where the gate is right now, muted when the reading is stale. -->
+            <TextView
+                android:id="@+id/textGateState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/status_pill_background"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="3dp"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="Closed" />
         </LinearLayout>
 
         <TextView
@@ -66,6 +81,35 @@
             android:textColor="@color/text_secondary"
             android:textSize="12sp"
             tools:text="55.751244, 37.618423 (50m)" />
+
+        <!-- gate-api only: the two explicit commands, for when the driver wants them by hand. -->
+        <LinearLayout
+            android:id="@+id/gateControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGateOpen"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:text="@string/gate_cmd_open" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnGateClose"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/gate_cmd_close" />
+
+
+        </LinearLayout>
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton

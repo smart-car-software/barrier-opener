@@ -46,6 +46,18 @@
             android:textStyle="bold"
             tools:text="Open barrier «Garage»?" />
 
+        <!-- gate-api only: what the gate reports while the question is on screen. -->
+        <TextView
+            android:id="@+id/textGateState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="22sp"
+            android:visibility="gone"
+            tools:text="Gate: closed" />
+
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

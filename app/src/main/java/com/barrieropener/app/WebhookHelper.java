@@ -66,7 +66,7 @@ import java.util.concurrent.Executors;
 public final class WebhookHelper {
     private static final String TAG = "WebhookHelper";
     private static final int CONNECT_TIMEOUT_MS = 7_000;
-    private static final int READ_TIMEOUT_MS = 7_000;
+    private static final int READ_TIMEOUT_MS = 10_000;
 
     /** Single thread: barrier requests are rare and serialising them keeps ordering obvious. */
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();

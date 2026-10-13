@@ -46,11 +46,35 @@ public class PendingCloseStore {
 
     /** Records that the barrier was just opened, arming its closing triggers. */
     public void markOpened(long barrierId) {
-        prefs.edit().putLong(key(barrierId), System.currentTimeMillis()).apply();
+        prefs.edit()
+                .putLong(key(barrierId), System.currentTimeMillis())
+                .remove(closestKey(barrierId)) // A new approach; the old one's track is history.
+                .apply();
     }
 
     public void clear(long barrierId) {
-        prefs.edit().remove(key(barrierId)).apply();
+        prefs.edit().remove(key(barrierId)).remove(closestKey(barrierId)).apply();
+    }
+
+    /**
+     * Notes a fix's distance to a barrier awaiting a close, keeping the nearest. The departure
+     * trigger needs to know the car has actually been at the gate — inside the closing radius —
+     * before "far from it" means anything, and with the open question asked well out, the fix that
+     * proves it may be a single one as the car rolls through.
+     */
+    public void noteDistance(long barrierId, double distanceM) {
+        if (distanceM < 0 || openedAt(barrierId) == 0L) {
+            return;
+        }
+        float stored = prefs.getFloat(closestKey(barrierId), -1f);
+        if (stored < 0 || distanceM < stored) {
+            prefs.edit().putFloat(closestKey(barrierId), (float) distanceM).apply();
+        }
+    }
+
+    /** The nearest the car has been since opening, or -1 when no fix has been noted. */
+    public double closest(long barrierId) {
+        return prefs.getFloat(closestKey(barrierId), -1f);
     }
 
     /** 0 when the barrier is not awaiting a close. */
@@ -82,5 +106,9 @@ public class PendingCloseStore {
 
     private static String key(long id) {
         return "b_" + id;
+    }
+
+    private static String closestKey(long id) {
+        return "c_" + id;
     }
 }

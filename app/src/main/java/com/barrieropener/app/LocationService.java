@@ -29,14 +29,17 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class LocationService extends Service {
     private static final String TAG = "LocationService";
@@ -72,6 +75,12 @@ public class LocationService extends Service {
     private PendingCloseStore pendingClose;
     private GearMonitor gearMonitor;
     private HostReachability hostReachability;
+    /** Which barriers the car has driven into since it was last outside them; see the class. */
+    private final ApproachTracker approachTracker = new ApproachTracker();
+    /** Gate-api barriers whose "is it already closed?" check is in flight, by id. */
+    private final Set<Long> closeChecksInFlight = new HashSet<>();
+    /** Gate-api barriers whose "is it already open?" check is in flight, by id. */
+    private final Set<Long> openChecksInFlight = new HashSet<>();
     private Location lastLocation;
     /** True until the startup question has been asked, or its window has run out. */
     private boolean startupPromptPending;
@@ -206,12 +215,15 @@ public class LocationService extends Service {
         List<Barrier> barriers = repository.getAll();
         lastLocation = location;
         triggerState.releaseFarBarriers(location.getLatitude(), location.getLongitude(), barriers);
+        approachTracker.update(barriers, location.getLatitude(), location.getLongitude());
         checkPendingCloses(barriers, location);
 
         NearbyResolver.Resolution res = NearbyResolver.resolve(
                 barriers,
                 BarrierDetector.Fix.from(location),
-                id -> triggerState.isTriggered(id));
+                id -> triggerState.isTriggered(id),
+                approachTracker::isArmed,
+                isParked());
 
         if (offerStartupOpen(res.inZone)) {
             return; // The startup question is on screen; don't stack detection on top of it.
@@ -221,6 +233,23 @@ public class LocationService extends Service {
             return; // Nothing new to suggest by direction.
         }
 
+        if (res.primary.getActionType() == Barrier.ActionType.GATE_API) {
+            // A gate that can say it is already open is not offered for opening — the driver just
+            // hears so. If the gate can't be read in time, the question is put as it always was.
+            Barrier primary = res.primary;
+            unlessGateAlreadyOpen(primary, () -> deliverDetectionPopup(res), () -> {
+                Log.i(TAG, primary.getName() + " is already open; not asking");
+                Toast.makeText(this, getString(R.string.gate_already_open, primary.getName()),
+                        Toast.LENGTH_LONG).show();
+                triggerState.markTriggered(primary.getId());
+                approachTracker.disarm(primary.getId());
+            });
+            return;
+        }
+        deliverDetectionPopup(res);
+    }
+
+    private void deliverDetectionPopup(NearbyResolver.Resolution res) {
         boolean delivered = triggerBarrierPopup(res.primary, res.inZone);
 
         // Suppress every fresh directional match so popups don't stack — but only once we actually
@@ -231,8 +260,46 @@ public class LocationService extends Service {
         if (delivered) {
             for (Barrier b : res.freshMatches) {
                 triggerState.markTriggered(b.getId());
+                approachTracker.disarm(b.getId());
             }
         }
+    }
+
+    /**
+     * Asks a gate-api gate where it is before offering to open it. {@code show} runs unless the gate
+     * reports itself open or opening, in which case {@code alreadyOpen} runs instead. A gate that
+     * cannot be read — network down, Home Assistant down — is offered anyway: on the approach the
+     * popup's job is to appear before the car reaches the gate, and a failed "Yes" at least
+     * explains itself with a toast. One check per barrier at a time, since fixes arrive every
+     * second and the request may take ten.
+     */
+    private void unlessGateAlreadyOpen(Barrier barrier, Runnable show, Runnable alreadyOpen) {
+        long barrierId = barrier.getId();
+        if (!openChecksInFlight.add(barrierId)) {
+            return;
+        }
+        GateApiClient.fetchState(barrier.getApiBaseUrl(), barrier.getApiToken(),
+                new GateApiClient.Callback() {
+                    @Override
+                    public void onSuccess(GateState state) {
+                        openChecksInFlight.remove(barrierId);
+                        if (!_isStarted) {
+                            return;
+                        }
+                        boolean open = state.haReachable && (state.state == GateState.State.OPEN
+                                || state.state == GateState.State.OPENING);
+                        (open ? alreadyOpen : show).run();
+                    }
+
+                    @Override
+                    public void onFailure(GateApiClient.Failure failure) {
+                        openChecksInFlight.remove(barrierId);
+                        Log.d(TAG, "Could not read the gate before offering to open: " + failure);
+                        if (_isStarted) {
+                            show.run();
+                        }
+                    }
+                });
     }
 
     /**
@@ -292,9 +359,29 @@ public class LocationService extends Service {
                 && !hostReachability.isReadyFor(barrier, false)) {
             // The engine has just been started and Wi-Fi is still coming up: probe, and let the
             // probe itself re-run this the moment the gate's endpoint answers.
-            hostReachability.probe(BarrierAction.urlFor(barrier, false),
-                    this::offerStartupOpenFromLastFix);
+            hostReachability.probe(barrier, false, this::offerStartupOpenFromLastFix);
             return false;
+        }
+        if (barrier.getActionType() == Barrier.ActionType.GATE_API) {
+            // The car is parked inside the zone; if the gate already stands open there is nothing
+            // to ask. The question stays pending while the gate is being read, so a fix arriving
+            // in the meantime neither re-asks nor gives up.
+            unlessGateAlreadyOpen(barrier, () -> putStartupQuestion(barrier, inZone), () -> {
+                Log.i(TAG, barrier.getName() + " is already open; startup question dropped");
+                Toast.makeText(this, getString(R.string.gate_already_open, barrier.getName()),
+                        Toast.LENGTH_LONG).show();
+                startupPromptPending = false;
+                triggerState.markTriggered(barrier.getId());
+            });
+            return false;
+        }
+        return putStartupQuestion(barrier, inZone);
+    }
+
+    /** Puts the startup question; true when it reached the driver and is therefore spent. */
+    private boolean putStartupQuestion(Barrier barrier, List<Barrier> inZone) {
+        if (!startupPromptPending) {
+            return false; // Answered or dropped while the gate was being read.
         }
         // Same rule as the driving path: only a question that actually reached the driver counts as
         // asked, otherwise the next fix retries.
@@ -314,8 +401,18 @@ public class LocationService extends Service {
         NearbyResolver.Resolution res = NearbyResolver.resolve(
                 repository.getAll(),
                 BarrierDetector.Fix.from(lastLocation),
-                id -> triggerState.isTriggered(id));
+                id -> triggerState.isTriggered(id),
+                isParked());
         offerStartupOpen(res.inZone);
+    }
+
+    /**
+     * Whether the car is known to be standing in Park. Only a real reading counts: on a unit whose
+     * gear can't be read this is false, and detection works as it did before the gear was available
+     * at all.
+     */
+    private boolean isParked() {
+        return Boolean.TRUE.equals(gearMonitor.isInPark());
     }
 
     /**
@@ -362,8 +459,12 @@ public class LocationService extends Service {
                 pendingClose.clear(b.getId());
                 continue;
             }
-            CloseResolver.Reason reason = CloseResolver.evaluate(b, openedAt, now,
-                    distanceFrom(location, b));
+            double distance = distanceFrom(location, b);
+            // Note this fix before judging: the one that puts the car at the gate may be the same
+            // one the departure rule needs to know about.
+            pendingClose.noteDistance(b.getId(), distance);
+            CloseResolver.Reason reason = CloseResolver.evaluate(b, openedAt, now, distance,
+                    pendingClose.closest(b.getId()));
             if (reason != null) {
                 offerClose(b, reason);
             }
@@ -380,10 +481,68 @@ public class LocationService extends Service {
             // Park is an event, not a state: re-running the periodic check would not bring it back,
             // so the retry is bound to this barrier and this reason.
             long barrierId = barrier.getId();
-            hostReachability.probe(BarrierAction.urlFor(barrier, true),
-                    () -> retryClose(barrierId, reason));
+            hostReachability.probe(barrier, true, () -> retryClose(barrierId, reason));
             return;
         }
+        if (barrier.getActionType() == Barrier.ActionType.GATE_API) {
+            offerCloseKnowingTheGate(barrier, reason);
+            return;
+        }
+        putCloseQuestion(barrier, reason);
+    }
+
+    /**
+     * A gate-api gate can say where it is, so ask it first: a gate the driver already closed by
+     * hand — or that closed itself after "open slightly" — gets no question at all, just a word
+     * that it is closed. And while the service reports Home Assistant down, the question is not
+     * put and the entry is not spent, exactly as when the host is silent: "Yes" would only fail.
+     */
+    private void offerCloseKnowingTheGate(Barrier barrier, CloseResolver.Reason reason) {
+        long barrierId = barrier.getId();
+        if (!closeChecksInFlight.add(barrierId)) {
+            return; // The previous check is still waiting on the service.
+        }
+        GateApiClient.fetchState(barrier.getApiBaseUrl(), barrier.getApiToken(),
+                new GateApiClient.Callback() {
+                    @Override
+                    public void onSuccess(GateState state) {
+                        closeChecksInFlight.remove(barrierId);
+                        if (!_isStarted || pendingClose.openedAt(barrierId) == 0L) {
+                            return; // Service gone, or cleared while we were asking.
+                        }
+                        if (!state.haReachable) {
+                            Log.d(TAG, "Service up but Home Assistant down; closing question waits");
+                            deferClose(barrierId, reason);
+                            return;
+                        }
+                        if (state.state == GateState.State.CLOSED) {
+                            Log.i(TAG, barrier.getName() + " is already closed; not asking");
+                            pendingClose.clear(barrierId);
+                            Toast.makeText(LocationService.this,
+                                    getString(R.string.gate_already_closed, barrier.getName()),
+                                    Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        putCloseQuestion(barrier, reason);
+                    }
+
+                    @Override
+                    public void onFailure(GateApiClient.Failure failure) {
+                        closeChecksInFlight.remove(barrierId);
+                        Log.d(TAG, "Could not read the gate before asking to close: " + failure);
+                        if (_isStarted) {
+                            deferClose(barrierId, reason);
+                        }
+                    }
+                });
+    }
+
+    /** Asks again after a tick, for a reason that — unlike the timer — would not recur by itself. */
+    private void deferClose(long barrierId, CloseResolver.Reason reason) {
+        closeTicker.postDelayed(() -> retryClose(barrierId, reason), CLOSE_TICK_MS);
+    }
+
+    private void putCloseQuestion(Barrier barrier, CloseResolver.Reason reason) {
         Log.d(TAG, "Offering to close " + barrier.getName() + " (" + reason + ")");
         triggerClosePopup(barrier);
         // Asked once; the popup clears the entry when the driver answers or it times out.
@@ -492,7 +651,9 @@ public class LocationService extends Service {
                 .setFullScreenIntent(fullScreenPi, true)
                 .setContentIntent(fullScreenPi)
                 .setAutoCancel(true)
-                .setTimeoutAfter(15_000L)
+                // Outlives the popup's own countdown, so the notification is never the thing that
+                // takes the question away while it is still on screen.
+                .setTimeoutAfter(35_000L)
                 .build();
 
         manager.notify(POPUP_NOTIFICATION_ID, n);
@@ -511,7 +672,8 @@ public class LocationService extends Service {
     public void onDestroy() {
         super.onDestroy();
         _isStarted = false;
-        closeTicker.removeCallbacks(closeTick);
+        // Everything on the ticker, not just the tick: deferred closing retries ride on it too.
+        closeTicker.removeCallbacksAndMessages(null);
         gearMonitor.stop();
         hostReachability.shutdown();
         locationManager.stopLocationUpdates();

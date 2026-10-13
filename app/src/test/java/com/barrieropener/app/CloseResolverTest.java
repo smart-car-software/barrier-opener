@@ -41,44 +41,78 @@ public class CloseResolverTest {
     @Test
     public void noTriggersEnabled_neverAsks() {
         Barrier b = webhookBarrier(false, false, 3);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000, 0));
     }
 
     @Test
     public void callBarrier_neverAsks() {
         Barrier b = webhookBarrier(true, true, 1);
         b.setActionType(Barrier.ActionType.CALL);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000, 0));
     }
 
     @Test
     public void departure_firesJustOutsideTheZone() {
         Barrier b = webhookBarrier(true, false, 3);
         // 50m radius plus a 5m hysteresis margin: still "at the gate" at 55m, away at 56m.
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 55));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 55, 0));
         assertEquals(CloseResolver.Reason.DEPARTURE,
-                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 56));
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 56, 0));
     }
 
     @Test
     public void departure_doesNotFireInsideTheZone() {
         Barrier b = webhookBarrier(true, false, 3);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 0));
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 50));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 0, 0));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 50, 0));
+    }
+
+    @Test
+    public void departure_needsTheCarToHaveBeenAtTheGate() {
+        // Opening is asked far out: the car says yes at 80 m from a gate whose closing radius is
+        // 10 m. It is already "outside" the closing radius — but it has not been through the gate.
+        Barrier b = webhookBarrier(true, false, 3);
+        b.setDetectionRadius(100);
+        b.setCloseRadius(10);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 80, -1)); // no fix noted
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 80, 40)); // never nearer than 40
+        // Through the gate (a fix at 6 m) and now 16 m past it: that is departure.
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 15, 6));
+        assertEquals(CloseResolver.Reason.DEPARTURE,
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 16, 6));
+    }
+
+    @Test
+    public void closingRadius_defaultsToTheDetectionRadius() {
+        // A barrier from before the setting existed keeps closing where it used to.
+        Barrier b = webhookBarrier(true, false, 3);
+        assertEquals(50.0, b.getCloseRadiusMeters(), 0.0);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 55, 20));
+        assertEquals(CloseResolver.Reason.DEPARTURE,
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 56, 20));
+    }
+
+    @Test
+    public void closingRadius_mayExceedTheDetectionRadius() {
+        Barrier b = webhookBarrier(true, false, 3);
+        b.setCloseRadius(80);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 70, 10));
+        assertEquals(CloseResolver.Reason.DEPARTURE,
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 86, 10));
     }
 
     @Test
     public void departure_withoutFixDoesNotFire() {
         Barrier b = webhookBarrier(true, false, 3);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, -1));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, -1, 0));
     }
 
     @Test
     public void timer_firesOnlyAfterTheDelay() {
         Barrier b = webhookBarrier(false, true, 3);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 179_000L, 0));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 179_000L, 0, 0));
         assertEquals(CloseResolver.Reason.TIMER,
-                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 180_000L, 0));
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 180_000L, 0, 0));
     }
 
     @Test
@@ -86,14 +120,14 @@ public class CloseResolverTest {
         // The car never left, so departure alone would never fire; the timer is the safety net.
         Barrier b = webhookBarrier(true, true, 1);
         assertEquals(CloseResolver.Reason.TIMER,
-                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 5));
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 5, 0));
     }
 
     @Test
     public void departureWinsWhenBothWouldFire() {
         Barrier b = webhookBarrier(true, true, 1);
         assertEquals(CloseResolver.Reason.DEPARTURE,
-                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 500));
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 500, 0));
     }
 
     @Test
@@ -126,13 +160,13 @@ public class CloseResolverTest {
     public void timer_doesNotFireOutsideTheZone() {
         // Driven away: that is the departure trigger's business, not the timer's.
         Barrier b = webhookBarrier(false, true, 1);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 500));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, 500, 0));
     }
 
     @Test
     public void timer_withoutFixDoesNotFire() {
         Barrier b = webhookBarrier(false, true, 1);
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, -1));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000L, -1, 0));
     }
 
     @Test
@@ -144,7 +178,7 @@ public class CloseResolverTest {
         assertTrue(b.isClosable());
         assertEquals(CloseResolver.Reason.PARK, CloseResolver.evaluateOnPark(b, 10));
         // ...and it stays quiet on the periodic path, which knows nothing about the gearbox.
-        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 60_000_000L, 10_000, 0));
     }
 
     @Test

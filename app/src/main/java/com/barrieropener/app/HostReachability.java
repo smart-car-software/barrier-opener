@@ -38,9 +38,12 @@ import java.util.concurrent.Executors;
  * network with a perfectly good internet capability that has no route to the home LAN at all. A
  * popup offered then looks fine and fails on "Yes", with only a toast to explain itself.
  *
- * <p>The probe is a bare TCP connect (see {@link WebhookHelper#isHostReachable}), it runs off the
- * main thread, and a positive answer is cached for {@link #CACHE_MS} so that a location fix every
- * second doesn't turn into a probe every second.
+ * <p>For a webhook barrier the probe is a bare TCP connect (see
+ * {@link WebhookHelper#isHostReachable}) — the only URL there is opens the gate, so it must not be
+ * called. A gate-api service has a side-effect-free {@code GET /healthz} for exactly this, so that
+ * is asked instead (see {@link GateApiClient#isReachable}). Either way the probe runs off the main
+ * thread, and a positive answer is cached for {@link #CACHE_MS} so that a location fix every second
+ * doesn't turn into a probe every second.
  */
 public class HostReachability {
     private static final String TAG = "HostReachability";
@@ -65,16 +68,20 @@ public class HostReachability {
     }
 
     /**
-     * Probes the host unless a probe for it is already running, and runs {@code onReady} on the
-     * main thread if it answers — so the question reaches the driver the moment the network is up
-     * rather than at the next location fix.
+     * Probes the barrier's host unless a probe for it is already running, and runs
+     * {@code onReady} on the main thread if it answers — so the question reaches the driver the
+     * moment the network is up rather than at the next location fix.
      */
-    public void probe(String url, Runnable onReady) {
+    public void probe(Barrier barrier, boolean closing, Runnable onReady) {
+        String url = BarrierAction.urlFor(barrier, closing);
         if (url == null || !inFlight.add(url)) {
             return;
         }
+        boolean gateApi = barrier.getActionType() == Barrier.ActionType.GATE_API;
         executor.execute(() -> {
-            boolean reachable = WebhookHelper.isHostReachable(url, TIMEOUT_MS);
+            boolean reachable = gateApi
+                    ? GateApiClient.isReachable(url, TIMEOUT_MS)
+                    : WebhookHelper.isHostReachable(url, TIMEOUT_MS);
             inFlight.remove(url);
             if (!reachable) {
                 return;

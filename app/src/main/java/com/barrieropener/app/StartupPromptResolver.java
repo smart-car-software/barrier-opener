@@ -54,12 +54,12 @@ public final class StartupPromptResolver {
 
     /**
      * Whether offering this barrier means nothing until its endpoint answers. A GSM barrier is
-     * dialled and needs no network; a webhook one is a request, and at the moment the engine
-     * starts the home network is typically seconds away from being up — so the caller waits for
-     * the host rather than putting a question to the driver that "Yes" cannot fulfil.
+     * dialled and needs no network; a webhook or gate-api one is a request, and at the moment the
+     * engine starts the home network is typically seconds away from being up — so the caller waits
+     * for the host rather than putting a question to the driver that "Yes" cannot fulfil.
      */
     public static boolean needsReachableHost(Barrier barrier) {
-        return barrier != null && barrier.getActionType() == Barrier.ActionType.WEBHOOK;
+        return barrier != null && barrier.isRequestBased();
     }
 
     /** Above this the engine is still on its cold-start fast idle; a warm one idles well below. */

@@ -27,7 +27,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "barrieropener.db";
-    private static final int DATABASE_VERSION = 9; // Incremented version for the startup prompt's waits
+    private static final int DATABASE_VERSION = 11; // Incremented version for the closing radius
 
     // Table name
     private static final String TABLE_BARRIERS = "barriers";
@@ -53,6 +53,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_CLOSE_SECRET = "close_secret";
     private static final String KEY_STARTUP_WAIT_BELT = "startup_wait_belt";
     private static final String KEY_STARTUP_WAIT_WARMUP = "startup_wait_warmup";
+    private static final String KEY_API_BASE_URL = "api_base_url";
+    private static final String KEY_API_TOKEN = "api_token";
+    private static final String KEY_CLOSE_RADIUS = "close_radius";
 
     // Create table SQL
     private static final String CREATE_TABLE_BARRIERS = "CREATE TABLE " + TABLE_BARRIERS +
@@ -75,7 +78,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_CLOSE_SECRET + " TEXT," +
             KEY_CLOSE_ON_PARK + " INTEGER DEFAULT 0," +
             KEY_STARTUP_WAIT_BELT + " INTEGER DEFAULT 0," +
-            KEY_STARTUP_WAIT_WARMUP + " INTEGER DEFAULT 0" +
+            KEY_STARTUP_WAIT_WARMUP + " INTEGER DEFAULT 0," +
+            KEY_API_BASE_URL + " TEXT," +
+            KEY_API_TOKEN + " TEXT," +
+            KEY_CLOSE_RADIUS + " REAL" +
             ")";
 
     /** Column order used by every read below; keeps cursor indices and the projection in sync. */
@@ -84,7 +90,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_DETECTION_RADIUS, KEY_ZOOM_LEVEL, KEY_BARRIER_TYPE, KEY_ACTION_TYPE,
             KEY_WEBHOOK_URL, KEY_WEBHOOK_SECRET, KEY_CLOSE_ON_DEPARTURE, KEY_CLOSE_ON_TIMER,
             KEY_CLOSE_DELAY_MINUTES, KEY_CLOSE_URL, KEY_CLOSE_SECRET, KEY_CLOSE_ON_PARK,
-            KEY_STARTUP_WAIT_BELT, KEY_STARTUP_WAIT_WARMUP
+            KEY_STARTUP_WAIT_BELT, KEY_STARTUP_WAIT_WARMUP, KEY_API_BASE_URL, KEY_API_TOKEN,
+            KEY_CLOSE_RADIUS
     };
 
     public DatabaseHelper(Context context) {
@@ -145,6 +152,17 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " +
                     KEY_STARTUP_WAIT_WARMUP + " INTEGER DEFAULT 0");
         }
+        if (oldVersion < 10) {
+            // Migration to 10 - the gate-api barrier: where the service lives and the token it
+            // expects. NULL on every existing row; call and webhook barriers never read them.
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_API_BASE_URL + " TEXT");
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_API_TOKEN + " TEXT");
+        }
+        if (oldVersion < 11) {
+            // Migration to 11 - the departure trigger's own radius. NULL reads as "use the
+            // detection radius", so existing barriers close exactly where they did before.
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_RADIUS + " REAL");
+        }
     }
 
     /** Fills the shared column set; used by both insert and update. */
@@ -169,6 +187,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(KEY_CLOSE_SECRET, barrier.getCloseSecret());
         values.put(KEY_STARTUP_WAIT_BELT, barrier.isStartupWaitForBelt() ? 1 : 0);
         values.put(KEY_STARTUP_WAIT_WARMUP, barrier.isStartupWaitForWarmUp() ? 1 : 0);
+        values.put(KEY_API_BASE_URL, barrier.getApiBaseUrl());
+        values.put(KEY_API_TOKEN, barrier.getApiToken());
+        values.put(KEY_CLOSE_RADIUS, barrier.getCloseRadius() > 0 ? barrier.getCloseRadius() : null);
         return values;
     }
 
@@ -199,6 +220,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         barrier.setCloseOnPark(cursor.getInt(17) != 0);
         barrier.setStartupWaitForBelt(cursor.getInt(18) != 0);
         barrier.setStartupWaitForWarmUp(cursor.getInt(19) != 0);
+        barrier.setApiBaseUrl(cursor.getString(20));
+        barrier.setApiToken(cursor.getString(21));
+        if (!cursor.isNull(22)) {
+            barrier.setCloseRadius(cursor.getDouble(22));
+        }
         return barrier;
     }
 

@@ -25,10 +25,14 @@ package com.barrieropener.app;
  * independent and whichever fires first wins:
  *
  * <ul>
- *   <li><b>Departure</b> — the car has left the detection zone plus {@link #DEPARTURE_MARGIN_M}.
- *       The margin is hysteresis, not distance: it only has to outlast GPS jitter around the edge
- *       of the zone, so the question comes as soon as the car is actually out rather than a block
- *       later.</li>
+ *   <li><b>Departure</b> — the car has been at the gate, inside the barrier's <i>closing</i>
+ *       radius, and has since moved out past it plus {@link #DEPARTURE_MARGIN_M}. The closing
+ *       radius is its own setting and is usually much smaller than the detection radius: opening
+ *       wants distance, so a slow gate is open by the time the car arrives, while closing wants the
+ *       car just through the gate. Requiring the car to have been inside first is what makes the
+ *       small radius safe — the open question is put far out, and without that rule the car would
+ *       count as "departed" the moment it said yes. The margin is hysteresis, not distance: it only
+ *       has to outlast GPS jitter around the boundary.</li>
  *   <li><b>Timer</b> — the configured number of minutes has passed since opening <i>and</i> the car
  *       is still inside the zone. That is the case it exists for: the car drove in and stayed
  *       (parked inside), or GPS never reported the departure.</li>
@@ -84,15 +88,21 @@ public final class CloseResolver {
      * @param openedAtMs when the driver confirmed opening
      * @param nowMs      current time
      * @param distanceM  current distance to the barrier, or a negative value when unknown (no fix)
+     * @param closestM   the nearest the car has been to the barrier since opening, or a negative
+     *                   value when no fix has been seen since
      * @return the trigger that fired, or null when it is not time to ask yet
      */
-    public static Reason evaluate(Barrier barrier, long openedAtMs, long nowMs, double distanceM) {
+    public static Reason evaluate(Barrier barrier, long openedAtMs, long nowMs, double distanceM,
+                                  double closestM) {
         if (barrier == null || !barrier.isClosable()) {
             return null;
         }
-        if (barrier.isCloseOnDeparture() && distanceM >= 0
-                && distanceM > barrier.getDetectionRadius() + DEPARTURE_MARGIN_M) {
-            return Reason.DEPARTURE;
+        if (barrier.isCloseOnDeparture() && distanceM >= 0) {
+            double closeRadius = barrier.getCloseRadiusMeters();
+            boolean wasAtTheGate = closestM >= 0 && closestM <= closeRadius;
+            if (wasAtTheGate && distanceM > closeRadius + DEPARTURE_MARGIN_M) {
+                return Reason.DEPARTURE;
+            }
         }
         if (barrier.isCloseOnTimer() && isInZone(barrier, distanceM)) {
             long elapsed = nowMs - openedAtMs;
