@@ -148,6 +148,8 @@
     <string name="car_diag_call_ringing">Cluster call card: show (ringing)</string>
     <string name="car_diag_call_clear">Cluster call card: remove</string>
     <string name="car_diag_copy">Copy report</string>
+    <string name="car_diag_media_on">Take the media keys from the player (test)</string>
+    <string name="car_diag_media_off">Give the media keys back</string>
     <string name="car_diag_root_inputimpl">Root: ECarX key log (InputImpl)</string>
     <string name="car_diag_root_logcat">Root: whole log, lines with key / dim</string>
     <string name="car_diag_root_tcpdump">Root: vehicle network packets (as MConfig)</string>

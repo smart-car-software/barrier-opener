@@ -67,6 +67,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private OneOsKeys oneOsKeys;
     private DimKeyBroadcasts dimKeys;
     private final RootStream rootStream = new RootStream();
+    private MediaKeyCatcher mediaKeys;
     private int rootLines;
     private DimCallCard callCard;
 
@@ -90,6 +91,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         wheelKeys = new WheelKeys(this);
         oneOsKeys = new OneOsKeys(this);
         dimKeys = new DimKeyBroadcasts(this);
+        mediaKeys = new MediaKeyCatcher(this);
         oneOsKeys.setEventSink(line -> appendReport("oneos: " + line));
         callCard = new DimCallCard(this);
 
@@ -144,6 +146,14 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         addAction(actions, getString(R.string.car_diag_root_tcpdump_all), () -> startRoot(
                 "tcpdump -i eth0 -l -n -x -s 128 -c 400 \"udp and src port 50500\"",
                 "pkill tcpdump"));
+        addAction(actions, getString(R.string.car_diag_media_on), () -> {
+            mediaKeys.start((code, pressed) -> logKey("media", code, pressed ? "down" : "up"));
+            appendReport("media session: on");
+        });
+        addAction(actions, getString(R.string.car_diag_media_off), () -> {
+            mediaKeys.stop();
+            appendReport("media session: off");
+        });
         addAction(actions, getString(R.string.car_diag_root_stop), () -> {
             rootStream.stop();
             appendReport("root: stopped");
@@ -207,6 +217,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         removeOverlay();
         callCard.release();
         rootStream.stop();
+        mediaKeys.stop();
         super.onDestroy();
     }
 
