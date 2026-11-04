@@ -39,6 +39,15 @@
 
     <color name="scrim_80">#CC000000</color>
 
+    <!-- Driver's screen: picked off the cluster's own navigation panel, not the app theme. The
+         cluster has a single dark look, so these have no night variant. -->
+    <color name="cluster_panel">#D9283442</color>
+    <color name="cluster_panel_rim">#FF55657A</color>
+    <color name="cluster_text">#FFF2F5F8</color>
+    <color name="cluster_text_dim">#FF7D8896</color>
+    <color name="cluster_accent">#FF4FB7F0</color>
+    <color name="cluster_accent_fill">#594FB7F0</color>
+
     <!-- Map controls. The zoom / search / my-location FABs float over map tiles rather than over a
          screen surface, so they get their own pair: a charcoal icon on the dark night surface was
          black-on-black and effectively invisible. -->

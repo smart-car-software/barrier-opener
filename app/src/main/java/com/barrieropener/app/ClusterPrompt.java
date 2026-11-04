@@ -20,6 +20,7 @@ package com.barrieropener.app;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -43,9 +44,14 @@ final class ClusterPrompt {
     private static final String KEY_DISPLAY = "display_id";
     static final int NONE = -1;
 
-    /** Yes / No / Wait colours, restored when "Wait" becomes available again. */
-    private static final int[] BACKGROUNDS = {R.drawable.button_green_background,
-            R.drawable.button_red_background, R.drawable.button_blue_background};
+    /**
+     * Where the card goes on a Monjaro's cluster (display #2, 1920x1080, of which the top 720 rows
+     * are the visible panel): centred, as wide as the navigation hint and just below it, so it
+     * reads as one more cluster panel rather than something laid over the dials. Measured off
+     * photos of the real cluster, hence plain pixels.
+     */
+    static final int CARD_WIDTH_PX = 460;
+    static final int CARD_TOP_PX = 288;
 
     private final Context context;
     private WindowManager wm;
@@ -94,7 +100,8 @@ final class ClusterPrompt {
             ((TextView) v.findViewById(R.id.clusterTitle)).setText(title);
             answers = new View[]{v.findViewById(R.id.clusterYes),
                     v.findViewById(R.id.clusterNo), v.findViewById(R.id.clusterWait)};
-            wm = ClusterDisplay.showOverlay(context, display, v, 0);
+            wm = ClusterDisplay.showOverlay(context, display, v,
+                    Gravity.TOP | Gravity.CENTER_HORIZONTAL, CARD_WIDTH_PX, CARD_TOP_PX);
             card = v;
         } catch (RuntimeException e) {
             // No overlay permission, or a firmware that refuses windows there: the head-unit
@@ -112,11 +119,26 @@ final class ClusterPrompt {
         if (answers == null) {
             return;
         }
-        for (int i = 0; i < answers.length && i < enabled.length; i++) {
-            answers[i].setEnabled(enabled[i]);
-            answers[i].setBackgroundResource(enabled[i] ? BACKGROUNDS[i] : R.drawable.button_gray_background);
+        paint(answers, selected, enabled);
+    }
+
+    /**
+     * The cluster's way of showing a choice: the selected answer in the accent frame, the rest as
+     * plain text, a spent one ("Wait" once pressed) dimmed. No scaling as on the head unit — the
+     * panel is narrow and the neighbouring cluster widgets must not be crowded.
+     */
+    static void paint(View[] answers, int selected, boolean[] enabled) {
+        for (int i = 0; i < answers.length; i++) {
+            TextView v = (TextView) answers[i];
+            boolean on = enabled == null || (i < enabled.length && enabled[i]);
+            v.setEnabled(on);
+            if (i == selected && on) {
+                v.setBackgroundResource(R.drawable.cluster_answer_selected);
+            } else {
+                v.setBackground(null);
+            }
+            v.setTextColor(v.getContext().getColor(on ? R.color.cluster_text : R.color.cluster_text_dim));
         }
-        WheelKeys.showSelection(answers, selected);
     }
 
     void dismiss() {

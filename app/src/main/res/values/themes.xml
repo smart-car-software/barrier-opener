@@ -40,15 +40,16 @@
         <item name="android:backgroundDimAmount">0.6</item>
     </style>
 
-    <!-- An answer on the driver's-screen test card. -->
+    <!-- An answer on the driver's-screen card: equal thirds of the panel, px like the layout. -->
     <style name="ClusterAnswer">
-        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_width">0px</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginHorizontal">8dp</item>
-        <item name="android:paddingHorizontal">24dp</item>
-        <item name="android:paddingVertical">12dp</item>
-        <item name="android:textColor">@android:color/white</item>
-        <item name="android:textSize">24sp</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginHorizontal">4px</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:paddingVertical">8px</item>
+        <item name="android:textColor">@color/cluster_text</item>
+        <item name="android:textSize">24px</item>
     </style>
 </resources>

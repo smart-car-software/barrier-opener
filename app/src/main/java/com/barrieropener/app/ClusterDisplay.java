@@ -94,10 +94,17 @@ final class ClusterDisplay {
      * @throws RuntimeException when the firmware refuses a window on that display
      */
     static WindowManager showOverlay(Context context, Display display, View view, int gravity) {
+        return showOverlay(context, display, view, gravity,
+                WindowManager.LayoutParams.WRAP_CONTENT, 0);
+    }
+
+    /** As above, {@code width} px wide (or a LayoutParams constant) and {@code y} px from the edge. */
+    static WindowManager showOverlay(Context context, Display display, View view, int gravity,
+                                     int width, int y) {
         Context displayContext = context.createDisplayContext(display);
         WindowManager wm = displayContext.getSystemService(WindowManager.class);
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                width,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 // Not focusable: the cluster has no touch and no focus to give; the wheel reaches
@@ -107,6 +114,7 @@ final class ClusterDisplay {
                         | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT);
         lp.gravity = gravity == 0 ? Gravity.CENTER : gravity;
+        lp.y = y;
         wm.addView(view, lp);
         return wm;
     }

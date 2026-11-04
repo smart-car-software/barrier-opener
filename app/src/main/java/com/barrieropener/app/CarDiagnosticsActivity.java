@@ -212,7 +212,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         }
         overlaySelected = WheelNavigator.move(overlaySelected, action,
                 new boolean[]{true, true, true});
-        WheelKeys.showSelection(overlayAnswers, overlaySelected);
+        ClusterPrompt.paint(overlayAnswers, overlaySelected, null);
     }
 
     private Display findDisplay(int id) {
@@ -241,8 +241,10 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
             overlayAnswers = new View[]{card.findViewById(R.id.clusterYes),
                     card.findViewById(R.id.clusterNo), card.findViewById(R.id.clusterWait)};
             overlaySelected = 0;
-            WheelKeys.showSelection(overlayAnswers, overlaySelected);
-            overlayWm = ClusterDisplay.showOverlay(this, display, card, 0);
+            ClusterPrompt.paint(overlayAnswers, overlaySelected, null);
+            overlayWm = ClusterDisplay.showOverlay(this, display, card,
+                    android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL,
+                    ClusterPrompt.CARD_WIDTH_PX, ClusterPrompt.CARD_TOP_PX);
             overlayView = card;
             main.postDelayed(removeOverlay, CLUSTER_TEST_MS);
             appendReport("overlay #" + displayId + ": added");
@@ -271,7 +273,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
             overlayAnswers = new View[]{card.findViewById(R.id.clusterYes),
                     card.findViewById(R.id.clusterNo), card.findViewById(R.id.clusterWait)};
             overlaySelected = 0;
-            WheelKeys.showSelection(overlayAnswers, overlaySelected);
+            ClusterPrompt.paint(overlayAnswers, overlaySelected, null);
             p.setContentView(card);
             p.show();
             presentation = p;
