@@ -158,6 +158,7 @@
     <string name="car_diag_copy">Скопировать отчёт</string>
     <string name="car_diag_media_on">Забрать медиакнопки у плеера (тест)</string>
     <string name="car_diag_media_off">Вернуть медиакнопки плееру</string>
+    <string name="car_diag_root_check">Root: проверить доступ (в первый раз разрешите отладку на экране)</string>
     <string name="car_diag_root_inputimpl">Root: лог кнопок ECarX (InputImpl)</string>
     <string name="car_diag_root_logcat">Root: весь лог, строки с key / dim</string>
     <string name="car_diag_root_tcpdump">Root: пакеты сети автомобиля (как MConfig)</string>

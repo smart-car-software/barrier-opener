@@ -66,7 +66,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private WheelKeys wheelKeys;
     private OneOsKeys oneOsKeys;
     private DimKeyBroadcasts dimKeys;
-    private final RootStream rootStream = new RootStream();
+    private RootStream rootStream;
     private MediaKeyCatcher mediaKeys;
     private int rootLines;
     private DimCallCard callCard;
@@ -92,6 +92,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         oneOsKeys = new OneOsKeys(this);
         dimKeys = new DimKeyBroadcasts(this);
         mediaKeys = new MediaKeyCatcher(this);
+        rootStream = new RootStream(this);
         oneOsKeys.setEventSink(line -> appendReport("oneos: " + line));
         callCard = new DimCallCard(this);
 
@@ -134,6 +135,8 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         // Root routes, as the Monjaro community tools take them: the ECarX input library's log,
         // a wider log filter in case the joystick is logged under another tag, and the vehicle
         // network packets MConfig+ filters on. Each runs until stopped or the screen is left.
+        addAction(actions, getString(R.string.car_diag_root_check), () -> startRoot(
+                "id; getprop service.adb.tcp.port; which tcpdump", null));
         addAction(actions, getString(R.string.car_diag_root_inputimpl), () -> startRoot(
                 "logcat -b main -v raw -T 1 InputImpl:V *:S", null));
         addAction(actions, getString(R.string.car_diag_root_logcat), () -> startRoot(

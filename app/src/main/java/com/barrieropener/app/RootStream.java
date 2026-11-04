@@ -17,23 +17,19 @@
 
 package com.barrieropener.app;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-
 /**
  * Runs one long-lived command as root and hands its output to the main thread line by line. On a
- * Monjaro the cluster joystick never reaches an app: the community tools that react to it (MConfig+)
- * do so as root, by following the ECarX input library's log or the vehicle network. Many owners'
- * units are rooted for those tools already; on one that is not, {@code su} is missing and this
- * reports that and does nothing.
+ * Monjaro the cluster joystick never reaches an app: the community tools that react to it
+ * (MConfig+) do so as root, by following the ECarX input library's log or the vehicle network.
  *
- * <p>{@code su 0 sh -c '…'} is the form those tools use, so it is the one the unit's su is known to
- * accept.
+ * <p>Root comes the way it comes to those tools: an app's own {@code exec("su")} is denied
+ * (error 13), so the command goes through the unit's adb daemon on the loopback
+ * ({@link LocalAdb}) as {@code su 0 sh -c '…'}, which the adb shell user is allowed to run.
  */
 final class RootStream {
     private static final String TAG = "RootStream";
@@ -43,67 +39,83 @@ final class RootStream {
         void onLine(String line);
     }
 
+    private final Context context;
     private final Handler main = new Handler(Looper.getMainLooper());
-    private Process process;
-    private Thread reader;
+    private volatile LocalAdb adb;
+    private Thread worker;
     private String killCommand;
 
+    RootStream(Context context) {
+        this.context = context.getApplicationContext();
+    }
+
     /**
-     * @param command      shell command run under {@code sh -c}; must not contain single quotes
+     * @param command      shell command run as root under {@code sh -c}; no single quotes
      * @param killCommand  run as root on {@link #stop()}, for commands that outlive their shell
-     *                     (tcpdump); null if destroying the process is enough
+     *                     (tcpdump); null if closing the stream is enough
      */
     void start(String command, String killCommand, Listener listener) {
         stop();
         this.killCommand = killCommand;
-        try {
-            ProcessBuilder pb = new ProcessBuilder("su", "0", "sh", "-c", command);
-            pb.redirectErrorStream(true);
-            Process p = pb.start();
-            process = p;
-            reader = new Thread(() -> {
-                try (BufferedReader r = new BufferedReader(
-                        new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
-                    String line;
-                    while ((line = r.readLine()) != null) {
-                        String l = line;
-                        main.post(() -> listener.onLine(l));
+        worker = new Thread(() -> {
+            StringBuilder report = new StringBuilder();
+            StringBuilder pending = new StringBuilder();
+            try (LocalAdb a = LocalAdb.connect(context, report)) {
+                adb = a;
+                post(listener, report);
+                a.shell("su 0 sh -c '" + command + "'", text -> {
+                    pending.append(text);
+                    int nl;
+                    while ((nl = pending.indexOf("\n")) >= 0) {
+                        String line = pending.substring(0, nl).replace("\r", "");
+                        pending.delete(0, nl + 1);
+                        main.post(() -> listener.onLine(line));
                     }
-                } catch (Exception e) {
-                    Log.d(TAG, "Stream ended", e);
-                }
-                main.post(() -> listener.onLine(null));
-            }, "RootStream");
-            reader.setDaemon(true);
-            reader.start();
-        } catch (Exception e) {
-            main.post(() -> {
-                listener.onLine("su failed: " + WheelKeys.rootCause(e));
-                listener.onLine(null);
-            });
-        }
+                });
+            } catch (Exception e) {
+                post(listener, report);
+                String why = WheelKeys.rootCause(e);
+                main.post(() -> listener.onLine("adb failed: " + why));
+                Log.d(TAG, "Root stream ended", e);
+            }
+            adb = null;
+            if (pending.length() > 0) {
+                String rest = pending.toString();
+                main.post(() -> listener.onLine(rest));
+            }
+            main.post(() -> listener.onLine(null));
+        }, "RootStream");
+        worker.setDaemon(true);
+        worker.start();
     }
 
-    boolean isRunning() {
-        return process != null;
+    private void post(Listener listener, StringBuilder report) {
+        for (String line : report.toString().split("\n")) {
+            if (!line.isEmpty()) {
+                main.post(() -> listener.onLine(line));
+            }
+        }
+        report.setLength(0);
     }
 
     void stop() {
-        Process p = process;
-        process = null;
-        if (p != null) {
-            p.destroy();
+        LocalAdb a = adb;
+        adb = null;
+        if (a != null) {
+            a.close();
         }
         if (killCommand != null) {
             String kill = killCommand;
             killCommand = null;
-            new Thread(() -> {
-                try {
-                    new ProcessBuilder("su", "0", "sh", "-c", kill).start().waitFor();
+            Thread t = new Thread(() -> {
+                try (LocalAdb k = LocalAdb.connect(context, new StringBuilder())) {
+                    k.shell("su 0 sh -c '" + kill + "'", text -> { });
                 } catch (Exception ignored) {
-                    // Nothing more to do: the process is gone or su is.
+                    // Nothing more to do: the stream is gone with its connection.
                 }
-            }, "RootStreamKill").start();
+            }, "RootStreamKill");
+            t.setDaemon(true);
+            t.start();
         }
     }
 }
