@@ -110,7 +110,8 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         }
         for (Display d : ClusterDisplay.secondaryDisplays(this)) {
             int id = d.getDisplayId();
-            addAction(actions, getString(R.string.car_diag_overlay, id), () -> showOverlay(id));
+            addAction(actions, getString(R.string.car_diag_overlay, id), () -> showOverlay(id, false));
+            addAction(actions, getString(R.string.car_diag_overlay_focus, id), () -> showOverlay(id, true));
             addAction(actions, getString(R.string.car_diag_use_display, id), () -> {
                 ClusterPrompt.chooseDisplay(this, id);
                 appendReport("popup copy display: #" + id);
@@ -224,7 +225,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         return null;
     }
 
-    private void showOverlay(int displayId) {
+    private void showOverlay(int displayId, boolean focusable) {
         removeOverlay();
         Display display = findDisplay(displayId);
         if (display == null) {
@@ -242,12 +243,28 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
                     card.findViewById(R.id.clusterNo), card.findViewById(R.id.clusterWait)};
             overlaySelected = 0;
             ClusterPrompt.paint(overlayAnswers, overlaySelected, null);
+            if (focusable) {
+                // Keys that reach the cluster display's focused window land here.
+                card.setFocusable(true);
+                card.setFocusableInTouchMode(true);
+                card.setOnKeyListener((v, keyCode, event) -> {
+                    if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                        logKey("cluster", keyCode, "down sc=" + event.getScanCode()
+                                + " dev=" + event.getDeviceId());
+                        onWheel(keyCode);
+                    }
+                    return keyCode != KeyEvent.KEYCODE_BACK;
+                });
+            }
             overlayWm = ClusterDisplay.showOverlay(this, display, card,
                     android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL,
-                    ClusterPrompt.CARD_WIDTH_PX, ClusterPrompt.CARD_TOP_PX);
+                    ClusterPrompt.CARD_WIDTH_PX, ClusterPrompt.CARD_TOP_PX, focusable);
+            if (focusable) {
+                card.requestFocus();
+            }
             overlayView = card;
             main.postDelayed(removeOverlay, CLUSTER_TEST_MS);
-            appendReport("overlay #" + displayId + ": added");
+            appendReport("overlay #" + displayId + (focusable ? " (focus)" : "") + ": added");
         } catch (Throwable t) {
             appendReport("overlay #" + displayId + " failed: " + WheelKeys.rootCause(t));
         }

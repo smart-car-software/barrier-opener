@@ -232,6 +232,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
         answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo), btnWait};
         clusterPrompt = new ClusterPrompt(this);
+        clusterPrompt.setKeyListener((code, pressed) -> onInterceptedKey(code, pressed, "cluster"));
         renderSelection();
         wheelKeys = new WheelKeys(this);
         oneOsKeys = new OneOsKeys(this);

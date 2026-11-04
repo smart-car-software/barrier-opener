@@ -139,6 +139,7 @@
     <string name="car_diag_hint">Press every steering-wheel button (joystick: left, right, up, down, OK) — each press should appear below. Then try the driver\'s-screen tests and note what showed up on the cluster. \"Copy report\" puts everything on the clipboard.</string>
     <string name="car_diag_no_keys">No keys yet.</string>
     <string name="car_diag_overlay">Window over the cluster on display #%1$d</string>
+    <string name="car_diag_overlay_focus">Window over the cluster on display #%1$d, catching the wheel</string>
     <string name="car_diag_use_display">Show the popup on display #%1$d too</string>
     <string name="car_diag_launch">Popup activity on display #%1$d</string>
     <string name="car_diag_presentation">Presentation on display #%1$d</string>

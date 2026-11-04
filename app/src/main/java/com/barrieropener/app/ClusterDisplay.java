@@ -95,12 +95,23 @@ final class ClusterDisplay {
      */
     static WindowManager showOverlay(Context context, Display display, View view, int gravity) {
         return showOverlay(context, display, view, gravity,
-                WindowManager.LayoutParams.WRAP_CONTENT, 0);
+                WindowManager.LayoutParams.WRAP_CONTENT, 0, false);
     }
 
     /** As above, {@code width} px wide (or a LayoutParams constant) and {@code y} px from the edge. */
     static WindowManager showOverlay(Context context, Display display, View view, int gravity,
                                      int width, int y) {
+        return showOverlay(context, display, view, gravity, width, y, false);
+    }
+
+    /**
+     * @param focusable take input focus on that display. A cluster's wheel joystick drives the
+     *        cluster's own menu, which on a Monjaro is an app on that very display — so its keys
+     *        go to whichever window there has focus, and a focusable overlay receives them (and
+     *        takes them away from the cluster menu while it is up).
+     */
+    static WindowManager showOverlay(Context context, Display display, View view, int gravity,
+                                     int width, int y, boolean focusable) {
         Context displayContext = context.createDisplayContext(display);
         WindowManager wm = displayContext.getSystemService(WindowManager.class);
         WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
@@ -109,7 +120,7 @@ final class ClusterDisplay {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 // Not focusable: the cluster has no touch and no focus to give; the wheel reaches
                 // us through the vendor interception, not through this window.
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                (focusable ? 0 : WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                         | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
                 PixelFormat.TRANSLUCENT);

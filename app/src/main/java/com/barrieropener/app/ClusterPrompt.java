@@ -21,6 +21,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -57,6 +58,7 @@ final class ClusterPrompt {
     private WindowManager wm;
     private View card;
     private View[] answers;
+    private WheelKeys.Listener keyListener;
 
     ClusterPrompt(Context context) {
         this.context = context;
@@ -72,6 +74,15 @@ final class ClusterPrompt {
 
     private static SharedPreferences prefs(Context context) {
         return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * Wheel keys that reach the cluster display. Its joystick drives the cluster's own menu — an
+     * app on that display — so the keys go to whichever window there has focus; the card takes
+     * focus while it is up and hands them over here.
+     */
+    void setKeyListener(WheelKeys.Listener listener) {
+        this.keyListener = listener;
     }
 
     /** Shows (or re-titles) the copy; quietly does nothing without a chosen, present display. */
@@ -100,8 +111,21 @@ final class ClusterPrompt {
             ((TextView) v.findViewById(R.id.clusterTitle)).setText(title);
             answers = new View[]{v.findViewById(R.id.clusterYes),
                     v.findViewById(R.id.clusterNo), v.findViewById(R.id.clusterWait)};
+            v.setFocusable(true);
+            v.setFocusableInTouchMode(true);
+            v.setOnKeyListener((view, keyCode, event) -> {
+                if (WheelNavigator.actionFor(keyCode) == WheelNavigator.Action.NONE) {
+                    return false; // Not ours: let the cluster have it.
+                }
+                WheelKeys.Listener l = keyListener;
+                if (l != null && event.getRepeatCount() == 0) {
+                    l.onWheelKey(keyCode, event.getAction() == KeyEvent.ACTION_DOWN);
+                }
+                return true;
+            });
             wm = ClusterDisplay.showOverlay(context, display, v,
-                    Gravity.TOP | Gravity.CENTER_HORIZONTAL, CARD_WIDTH_PX, CARD_TOP_PX);
+                    Gravity.TOP | Gravity.CENTER_HORIZONTAL, CARD_WIDTH_PX, CARD_TOP_PX, true);
+            v.requestFocus();
             card = v;
         } catch (RuntimeException e) {
             // No overlay permission, or a firmware that refuses windows there: the head-unit

@@ -147,6 +147,7 @@
     <string name="car_diag_hint">Нажмите все кнопки на руле (джойстик: влево, вправо, вверх, вниз, ОК) — каждое нажатие должно появиться ниже. Затем попробуйте тесты экрана водителя и запомните, что появилось на приборке. «Скопировать отчёт» кладёт всё в буфер обмена.</string>
     <string name="car_diag_no_keys">Нажатий пока нет.</string>
     <string name="car_diag_overlay">Окно поверх приборки на дисплее #%1$d</string>
+    <string name="car_diag_overlay_focus">Окно поверх приборки на дисплее #%1$d, ловит кнопки руля</string>
     <string name="car_diag_use_display">Дублировать всплывашку на дисплей #%1$d</string>
     <string name="car_diag_launch">Всплывашка на дисплее #%1$d</string>
     <string name="car_diag_presentation">Presentation на дисплее #%1$d</string>
