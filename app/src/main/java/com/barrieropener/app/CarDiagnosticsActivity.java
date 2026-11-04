@@ -65,6 +65,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private TextView reportText;
     private WheelKeys wheelKeys;
     private OneOsKeys oneOsKeys;
+    private DimKeyBroadcasts dimKeys;
     private DimCallCard callCard;
 
     // The test card on the cluster, while one is up.
@@ -86,6 +87,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         keyLogText.setText(R.string.car_diag_no_keys);
         wheelKeys = new WheelKeys(this);
         oneOsKeys = new OneOsKeys(this);
+        dimKeys = new DimKeyBroadcasts(this);
         oneOsKeys.setEventSink(line -> appendReport("oneos: " + line));
         callCard = new DimCallCard(this);
 
@@ -145,12 +147,35 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         boolean ok = wheelKeys.start(WheelKeys.allVendorKeyCodes(), this::onVendorKey);
         appendReport("--- wheel interception: " + (ok ? "on" : "off") + "\n" + wheelKeys.report());
         oneOsKeys.start(WheelKeys.allVendorKeyCodes(), this::onOneOsKey);
+        dimKeys.start(this::onDimKey);
+    }
+
+    private void onDimKey(WheelNavigator.Action action, String description) {
+        String line = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date())
+                + " dim " + description + " -> " + action;
+        keyLog.addFirst(line);
+        while (keyLog.size() > LOG_LINES) {
+            keyLog.removeLast();
+        }
+        keyLogText.setText(String.join("\n", keyLog));
+        report.append("key ").append(line).append('\n');
+        if (overlayView != null && action != WheelNavigator.Action.NONE) {
+            if (action == WheelNavigator.Action.CONFIRM) {
+                appendReport("cluster card: chosen " + overlaySelected);
+                removeOverlay();
+            } else {
+                overlaySelected = WheelNavigator.move(overlaySelected, action,
+                        new boolean[]{true, true, true});
+                ClusterPrompt.paint(overlayAnswers, overlaySelected, null);
+            }
+        }
     }
 
     @Override
     protected void onPause() {
         wheelKeys.stop();
         oneOsKeys.stop();
+        dimKeys.stop();
         super.onPause();
     }
 

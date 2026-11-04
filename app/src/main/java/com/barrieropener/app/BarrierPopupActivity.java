@@ -73,6 +73,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private WheelKeys wheelKeys;
     /** The route that works on a Monjaro; {@link #wheelKeys} covers other ECarX units. */
     private OneOsKeys oneOsKeys;
+    /** The cluster joystick on a Monjaro: broadcast by the ECarX input service. */
+    private DimKeyBroadcasts dimKeys;
     /** The same question on the driver's screen, answered with the wheel. */
     private ClusterPrompt clusterPrompt;
     /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
@@ -236,6 +238,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         renderSelection();
         wheelKeys = new WheelKeys(this);
         oneOsKeys = new OneOsKeys(this);
+        dimKeys = new DimKeyBroadcasts(this);
     }
 
     /**
@@ -511,12 +514,20 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // away from the cluster menu and everything else until it is abandoned.
         wheelKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onVendorKey);
         oneOsKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onOneOsKey);
+        dimKeys.start((action, description) -> {
+            if (action == WheelNavigator.Action.NONE || isFinishing()) {
+                return;
+            }
+            keyDebugText.setText(getString(R.string.popup_key_debug, description, "dim"));
+            onWheelAction(action);
+        });
     }
 
     @Override
     protected void onPause() {
         wheelKeys.stop();
         oneOsKeys.stop();
+        dimKeys.stop();
         gatePoller.stop();
         super.onPause();
     }

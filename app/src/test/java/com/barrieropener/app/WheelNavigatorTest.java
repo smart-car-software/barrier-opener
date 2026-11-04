@@ -58,6 +58,20 @@ public class WheelNavigatorTest {
     }
 
     @Test
+    public void clusterJoystickBroadcasts() {
+        assertEquals(WheelNavigator.Action.PREVIOUS, WheelNavigator.actionForBroadcast(
+                "ecarx.intent.action.ECARX_KEY_DIMSCROLLUP_EVENT"));
+        assertEquals(WheelNavigator.Action.NEXT, WheelNavigator.actionForBroadcast(
+                "ecarx.intent.action.ECARX_KEY_DIMSCROLLDOWN_EVENT"));
+        assertEquals(WheelNavigator.Action.CONFIRM, WheelNavigator.actionForBroadcast(
+                "ecarx.intent.action.ECARX_KEY_DIMCONFIRM_EVENT"));
+        // Source / voice keys are logged by diagnostics but never answer the question.
+        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionForBroadcast(
+                "ecarx.intent.action.ECARX_KEY_RSRC_EVENT"));
+        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionForBroadcast(null));
+    }
+
+    @Test
     public void movesOneStep() {
         assertEquals(1, WheelNavigator.move(0, WheelNavigator.Action.NEXT, ALL));
         assertEquals(0, WheelNavigator.move(1, WheelNavigator.Action.PREVIOUS, ALL));

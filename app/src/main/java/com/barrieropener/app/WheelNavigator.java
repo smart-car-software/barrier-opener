@@ -88,6 +88,25 @@ public final class WheelNavigator {
         }
     }
 
+    // The cluster joystick on a Monjaro, as broadcast by the ECarX input service.
+    static final String BROADCAST_DIM_SCROLL_UP = "ecarx.intent.action.ECARX_KEY_DIMSCROLLUP_EVENT";
+    static final String BROADCAST_DIM_SCROLL_DOWN = "ecarx.intent.action.ECARX_KEY_DIMSCROLLDOWN_EVENT";
+    static final String BROADCAST_DIM_CONFIRM = "ecarx.intent.action.ECARX_KEY_DIMCONFIRM_EVENT";
+
+    /** The answer's three choices sit in a row, so "up" is towards Yes and "down" towards Wait. */
+    public static Action actionForBroadcast(String action) {
+        if (BROADCAST_DIM_SCROLL_UP.equals(action)) {
+            return Action.PREVIOUS;
+        }
+        if (BROADCAST_DIM_SCROLL_DOWN.equals(action)) {
+            return Action.NEXT;
+        }
+        if (BROADCAST_DIM_CONFIRM.equals(action)) {
+            return Action.CONFIRM;
+        }
+        return Action.NONE;
+    }
+
     /**
      * Moves the selection one step over the answers that can still be chosen. It stops at the
      * ends rather than wrapping: a driver counting presses without looking should not land back
