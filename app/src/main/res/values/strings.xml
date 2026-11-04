@@ -140,6 +140,7 @@
     <string name="car_diag_no_keys">No keys yet.</string>
     <string name="car_diag_overlay">Window over the cluster on display #%1$d</string>
     <string name="car_diag_launch">Popup activity on display #%1$d</string>
+    <string name="car_diag_presentation">Presentation on display #%1$d</string>
     <string name="car_diag_no_displays">Android sees no display besides this screen.</string>
     <string name="car_diag_call_incoming">Cluster call card: show (incoming)</string>
     <string name="car_diag_call_ringing">Cluster call card: show (ringing)</string>

@@ -17,6 +17,7 @@
 
 package com.barrieropener.app;
 
+import android.app.Presentation;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -63,6 +64,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private TextView keyLogText;
     private TextView reportText;
     private WheelKeys wheelKeys;
+    private OneOsKeys oneOsKeys;
     private DimCallCard callCard;
 
     // The test card on the cluster, while one is up.
@@ -70,6 +72,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private View overlayView;
     private View[] overlayAnswers;
     private int overlaySelected;
+    private Presentation presentation;
     private final Runnable removeOverlay = this::removeOverlay;
 
     @Override
@@ -82,6 +85,8 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         reportText = findViewById(R.id.diagReport);
         keyLogText.setText(R.string.car_diag_no_keys);
         wheelKeys = new WheelKeys(this);
+        oneOsKeys = new OneOsKeys(this);
+        oneOsKeys.setEventSink(line -> appendReport("oneos: " + line));
         callCard = new DimCallCard(this);
 
         appendReport("device: " + Build.MANUFACTURER + " " + Build.MODEL + " / " + Build.PRODUCT
@@ -106,6 +111,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
             int id = d.getDisplayId();
             addAction(actions, getString(R.string.car_diag_overlay, id), () -> showOverlay(id));
             addAction(actions, getString(R.string.car_diag_launch, id), () -> launchPopupOn(id));
+            addAction(actions, getString(R.string.car_diag_presentation, id), () -> showPresentation(id));
         }
         addAction(actions, getString(R.string.car_diag_call_incoming),
                 () -> showCallCard(DimCallCard.CALL_STATUS_IN_COMING_CALL));
@@ -132,11 +138,13 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         // learn which button is which, and this screen is only open while the driver is testing.
         boolean ok = wheelKeys.start(WheelKeys.allVendorKeyCodes(), this::onVendorKey);
         appendReport("--- wheel interception: " + (ok ? "on" : "off") + "\n" + wheelKeys.report());
+        oneOsKeys.start(WheelKeys.allVendorKeyCodes(), this::onOneOsKey);
     }
 
     @Override
     protected void onPause() {
         wheelKeys.stop();
+        oneOsKeys.stop();
         super.onPause();
     }
 
@@ -159,6 +167,13 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
             return super.dispatchKeyEvent(event);
         }
         return true;
+    }
+
+    private void onOneOsKey(int code, boolean pressed) {
+        logKey("oneos", code, pressed ? "press" : "release");
+        if (pressed) {
+            onWheel(code);
+        }
     }
 
     private void onVendorKey(int code, boolean pressed) {
@@ -231,7 +246,47 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * The platform's own way to put content on a presentation display — what every display but
+     * #0 is on this unit. Shown as an overlay window, so it does not need this activity in front.
+     */
+    private void showPresentation(int displayId) {
+        removeOverlay();
+        Display display = findDisplay(displayId);
+        if (display == null) {
+            appendReport("presentation #" + displayId + ": display gone");
+            return;
+        }
+        try {
+            Presentation p = new Presentation(this, display, R.style.Theme_BarrierOpener);
+            p.getWindow().setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+            View card = p.getLayoutInflater().inflate(R.layout.view_cluster_prompt, null);
+            ((TextView) card.findViewById(R.id.clusterTitle)).setText(
+                    getString(R.string.popup_title_window, getString(R.string.car_diag_test_barrier)));
+            overlayAnswers = new View[]{card.findViewById(R.id.clusterYes),
+                    card.findViewById(R.id.clusterNo), card.findViewById(R.id.clusterWait)};
+            overlaySelected = 0;
+            WheelKeys.showSelection(overlayAnswers, overlaySelected);
+            p.setContentView(card);
+            p.show();
+            presentation = p;
+            overlayView = card;
+            main.postDelayed(removeOverlay, CLUSTER_TEST_MS);
+            appendReport("presentation #" + displayId + ": shown");
+        } catch (Throwable t) {
+            appendReport("presentation #" + displayId + " failed: " + WheelKeys.rootCause(t));
+        }
+    }
+
     private void removeOverlay() {
+        if (presentation != null) {
+            try {
+                presentation.dismiss();
+            } catch (RuntimeException ignored) {
+                // Its display went away first.
+            }
+            presentation = null;
+        }
         main.removeCallbacks(removeOverlay);
         ClusterDisplay.removeOverlay(overlayWm, overlayView);
         overlayWm = null;

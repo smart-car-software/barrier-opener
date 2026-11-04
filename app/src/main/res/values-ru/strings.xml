@@ -148,6 +148,7 @@
     <string name="car_diag_no_keys">Нажатий пока нет.</string>
     <string name="car_diag_overlay">Окно поверх приборки на дисплее #%1$d</string>
     <string name="car_diag_launch">Всплывашка на дисплее #%1$d</string>
+    <string name="car_diag_presentation">Presentation на дисплее #%1$d</string>
     <string name="car_diag_no_displays">Android не видит других дисплеев, кроме этого экрана.</string>
     <string name="car_diag_call_incoming">Карточка звонка на приборке: показать (входящий)</string>
     <string name="car_diag_call_ringing">Карточка звонка на приборке: показать (звонит)</string>

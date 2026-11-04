@@ -70,6 +70,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     /** Index into {@link #answers} the wheel has selected. */
     private int selectedAnswer;
     private WheelKeys wheelKeys;
+    /** The route that works on a Monjaro; {@link #wheelKeys} covers other ECarX units. */
+    private OneOsKeys oneOsKeys;
     /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
     private TextView keyDebugText;
 
@@ -228,6 +230,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo), btnWait};
         WheelKeys.showSelection(answers, selectedAnswer);
         wheelKeys = new WheelKeys(this);
+        oneOsKeys = new OneOsKeys(this);
     }
 
     /**
@@ -250,10 +253,18 @@ public class BarrierPopupActivity extends AppCompatActivity {
     }
 
     private void onVendorKey(int code, boolean pressed) {
+        onInterceptedKey(code, pressed, "ecarx");
+    }
+
+    private void onOneOsKey(int code, boolean pressed) {
+        onInterceptedKey(code, pressed, "oneos");
+    }
+
+    private void onInterceptedKey(int code, boolean pressed, String source) {
         if (!pressed || isFinishing()) {
             return;
         }
-        reportKey(code, "ecarx");
+        reportKey(code, source);
         onWheelAction(WheelNavigator.actionFor(code));
     }
 
@@ -468,11 +479,13 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // Held only while the question is in front of the driver: interception takes these keys
         // away from the cluster menu and everything else until it is abandoned.
         wheelKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onVendorKey);
+        oneOsKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onOneOsKey);
     }
 
     @Override
     protected void onPause() {
         wheelKeys.stop();
+        oneOsKeys.stop();
         gatePoller.stop();
         super.onPause();
     }

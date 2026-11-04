@@ -33,6 +33,9 @@
          that ship the android.car API; everywhere else it is an unknown permission the system
          ignores, and GearMonitor simply reports the feature as unavailable. -->
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" />
+    <!-- Steering-wheel keys on Geely units (OneOsKeys): the OneOS API service may check it before
+         handing out its key-input manager. Unknown, and ignored, everywhere else. -->
+    <uses-permission android:name="geely.oneos.permission.SERVICE" />
 
     <!--
       All hardware features are declared "not required" so the APK installs on head units that
