@@ -132,6 +132,22 @@
     <string name="popup_calling_window">Calling %s…</string>
     <string name="popup_nearby_header">Also in range:</string>
     <string name="popup_close_title_window">Close barrier %s?</string>
+    <string name="popup_key_debug">Wheel: %1$s (%2$s)</string>
+
+    <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->
+    <string name="car_diag_title">Wheel &amp; cluster</string>
+    <string name="car_diag_hint">Press every steering-wheel button (joystick: left, right, up, down, OK) — each press should appear below. Then try the driver\'s-screen tests and note what showed up on the cluster. \"Copy report\" puts everything on the clipboard.</string>
+    <string name="car_diag_no_keys">No keys yet.</string>
+    <string name="car_diag_overlay">Window over the cluster on display #%1$d</string>
+    <string name="car_diag_launch">Popup activity on display #%1$d</string>
+    <string name="car_diag_no_displays">Android sees no display besides this screen.</string>
+    <string name="car_diag_call_incoming">Cluster call card: show (incoming)</string>
+    <string name="car_diag_call_ringing">Cluster call card: show (ringing)</string>
+    <string name="car_diag_call_clear">Cluster call card: remove</string>
+    <string name="car_diag_copy">Copy report</string>
+    <string name="car_diag_copied">Report copied</string>
+    <string name="car_diag_share">Share report</string>
+    <string name="car_diag_test_barrier">Test</string>
 
     <!-- Location Service -->
     <string name="location_timeout">Could not get location: timeout</string>

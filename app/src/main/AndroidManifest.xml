@@ -86,6 +86,12 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
+        <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build), opened from About. -->
+        <activity
+            android:name=".CarDiagnosticsActivity"
+            android:exported="false"
+            android:parentActivityName=".AboutActivity" />
+
         <!-- Popup Dialog Activity. setShowWhenLocked()/setTurnScreenOn() are called in onCreate
              rather than declared in the manifest so the activity behaves correctly even when
              launched on top of an unlocked screen. -->

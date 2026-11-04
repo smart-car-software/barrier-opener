@@ -140,6 +140,22 @@
     <string name="popup_calling_window">Звонок %s…</string>
     <string name="popup_nearby_header">Также в зоне:</string>
     <string name="popup_close_title_window">Закрыть шлагбаум %s?</string>
+    <string name="popup_key_debug">Руль: %1$s (%2$s)</string>
+
+    <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->
+    <string name="car_diag_title">Руль и приборка</string>
+    <string name="car_diag_hint">Нажмите все кнопки на руле (джойстик: влево, вправо, вверх, вниз, ОК) — каждое нажатие должно появиться ниже. Затем попробуйте тесты экрана водителя и запомните, что появилось на приборке. «Скопировать отчёт» кладёт всё в буфер обмена.</string>
+    <string name="car_diag_no_keys">Нажатий пока нет.</string>
+    <string name="car_diag_overlay">Окно поверх приборки на дисплее #%1$d</string>
+    <string name="car_diag_launch">Всплывашка на дисплее #%1$d</string>
+    <string name="car_diag_no_displays">Android не видит других дисплеев, кроме этого экрана.</string>
+    <string name="car_diag_call_incoming">Карточка звонка на приборке: показать (входящий)</string>
+    <string name="car_diag_call_ringing">Карточка звонка на приборке: показать (звонит)</string>
+    <string name="car_diag_call_clear">Карточка звонка на приборке: убрать</string>
+    <string name="car_diag_copy">Скопировать отчёт</string>
+    <string name="car_diag_copied">Отчёт скопирован</string>
+    <string name="car_diag_share">Отправить отчёт</string>
+    <string name="car_diag_test_barrier">Тест</string>
 
     <!-- Add/Edit Barrier Screen -->
     <string name="barrier_type">Тип шлагбаума</string>
