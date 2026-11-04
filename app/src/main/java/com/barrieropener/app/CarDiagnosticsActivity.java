@@ -66,6 +66,8 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private WheelKeys wheelKeys;
     private OneOsKeys oneOsKeys;
     private DimKeyBroadcasts dimKeys;
+    private final RootStream rootStream = new RootStream();
+    private int rootLines;
     private DimCallCard callCard;
 
     // The test card on the cluster, while one is up.
@@ -127,6 +129,25 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
                 () -> showCallCard(DimCallCard.CALL_STATUS_RINGING));
         addAction(actions, getString(R.string.car_diag_call_clear),
                 () -> appendReport("call card clear:\n" + callCard.clear()));
+        // Root routes, as the Monjaro community tools take them: the ECarX input library's log,
+        // a wider log filter in case the joystick is logged under another tag, and the vehicle
+        // network packets MConfig+ filters on. Each runs until stopped or the screen is left.
+        addAction(actions, getString(R.string.car_diag_root_inputimpl), () -> startRoot(
+                "logcat -b main -v raw -T 1 InputImpl:V *:S", null));
+        addAction(actions, getString(R.string.car_diag_root_logcat), () -> startRoot(
+                "logcat -b all -v brief -T 1 -e \"[Kk]ey|KEY|[Dd]im|DIM|[Jj]oystick|SWC|[Ww]heel\"",
+                null));
+        addAction(actions, getString(R.string.car_diag_root_tcpdump), () -> startRoot(
+                "tcpdump -i eth0 -l -n -x -s 192 \"udp and src port 50500 and dst port 50335"
+                        + " and udp[8:2]=0x0026 and udp[10:2]=0x0020\"",
+                "pkill tcpdump"));
+        addAction(actions, getString(R.string.car_diag_root_tcpdump_all), () -> startRoot(
+                "tcpdump -i eth0 -l -n -x -s 128 -c 400 \"udp and src port 50500\"",
+                "pkill tcpdump"));
+        addAction(actions, getString(R.string.car_diag_root_stop), () -> {
+            rootStream.stop();
+            appendReport("root: stopped");
+        });
         addAction(actions, getString(R.string.car_diag_copy), this::copyReport);
         addAction(actions, getString(R.string.car_diag_share), this::shareReport);
     }
@@ -176,6 +197,8 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         wheelKeys.stop();
         oneOsKeys.stop();
         dimKeys.stop();
+        // Not stopped here: the driver leaves this screen to press keys while a cluster test
+        // card or popup is up. onDestroy ends it.
         super.onPause();
     }
 
@@ -183,6 +206,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     protected void onDestroy() {
         removeOverlay();
         callCard.release();
+        rootStream.stop();
         super.onDestroy();
     }
 
@@ -354,6 +378,32 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         } catch (Throwable t) {
             appendReport("launch popup on #" + displayId + " failed: " + WheelKeys.rootCause(t));
         }
+    }
+
+    /** Report lines from a root command; capped so a chatty log cannot swamp the report. */
+    private static final int MAX_ROOT_LINES = 600;
+
+    private void startRoot(String command, String kill) {
+        rootLines = 0;
+        appendReport("--- root: " + command);
+        rootStream.start(command, kill, line -> {
+            if (line == null) {
+                appendReport("root: ended");
+                return;
+            }
+            String stamped = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(new Date())
+                    + " " + line;
+            keyLog.addFirst("root " + stamped);
+            while (keyLog.size() > LOG_LINES) {
+                keyLog.removeLast();
+            }
+            keyLogText.setText(String.join("\n", keyLog));
+            if (rootLines++ < MAX_ROOT_LINES) {
+                appendReport(stamped);
+            } else if (rootLines == MAX_ROOT_LINES + 1) {
+                appendReport("root: report full, further lines only in the live log");
+            }
+        });
     }
 
     private void showCallCard(int status) {
