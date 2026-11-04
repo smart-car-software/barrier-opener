@@ -118,6 +118,18 @@
             android:textSize="20sp"
             tools:text="Auto-dismiss in 10 s" />
 
+        <!-- Diagnostic build only: the last steering-wheel key the popup saw, so the driver can
+             report what the wheel actually sends. -->
+        <TextView
+            android:id="@+id/textKeyDebug"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="16sp"
+            tools:text="Wheel: 22 DPAD_RIGHT (android)" />
+
         <View
             android:id="@+id/nearbyDivider"
             android:layout_width="match_parent"

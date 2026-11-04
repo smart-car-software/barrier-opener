@@ -27,6 +27,7 @@ import android.media.SoundPool;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
@@ -64,9 +65,23 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private Button btnWait;
     private CountDownTimer countdown;
 
+    /** Yes / No / Wait, in the order the wheel walks them. */
+    private View[] answers;
+    /** Index into {@link #answers} the wheel has selected. */
+    private int selectedAnswer;
+    private WheelKeys wheelKeys;
+    /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
+    private TextView keyDebugText;
+
     /** Intent extra: "close" puts the popup in closing mode; anything else means opening. */
     public static final String EXTRA_MODE = "popup_mode";
     public static final String MODE_CLOSE = "close";
+    /**
+     * Intent extra: a question from the diagnostics screen, put on another display to see whether
+     * it shows. Names no real barrier, so it must neither trigger anything nor offer the
+     * neighbours' open buttons from live location.
+     */
+    public static final String EXTRA_TEST = "popup_test";
 
     private String barrierName;
     private boolean closeMode;
@@ -104,7 +119,9 @@ public class BarrierPopupActivity extends AppCompatActivity {
         initViews();
         initSoundPool();
         bindFromIntent();
-        startLocationTracking();
+        if (!getIntent().getBooleanExtra(EXTRA_TEST, false)) {
+            startLocationTracking();
+        }
     }
 
     @Override
@@ -135,6 +152,9 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // user pressed or restart the auto-dismiss out from under them.
         if (primaryChanged) {
             resetWaitButton();
+            // A fresh question starts on "Yes" — the answer the popup exists to offer.
+            selectedAnswer = 0;
+            WheelKeys.showSelection(answers, selectedAnswer);
             restartCountdown();
             playSound();
         }
@@ -154,6 +174,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void resetWaitButton() {
         btnWait.setEnabled(true);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_blue_background));
+        WheelKeys.showSelection(answers, selectedAnswer);
     }
 
     private void showOverLockscreen() {
@@ -202,6 +223,64 @@ public class BarrierPopupActivity extends AppCompatActivity {
         btnWait.setOnClickListener(v -> cancelAutoDismiss());
         btnWait.setEnabled(true);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_blue_background));
+        keyDebugText = findViewById(R.id.textKeyDebug);
+
+        answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo), btnWait};
+        WheelKeys.showSelection(answers, selectedAnswer);
+        wheelKeys = new WheelKeys(this);
+    }
+
+    /**
+     * Wheel keys that arrive as ordinary key events — units whose wheel is wired as a d-pad.
+     * Geely units do not deliver them this way; see {@link WheelKeys} for the vendor route.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        if (WheelNavigator.actionFor(code) == WheelNavigator.Action.NONE) {
+            return super.dispatchKeyEvent(event);
+        }
+        // Act on the press only, and only on its first event: a held key auto-repeats, and a
+        // repeated "confirm" is exactly the double impulse a sliding gate reads as "stop".
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+            reportKey(code, "android");
+            onWheelAction(WheelNavigator.actionFor(code));
+        }
+        return true;
+    }
+
+    private void onVendorKey(int code, boolean pressed) {
+        if (!pressed || isFinishing()) {
+            return;
+        }
+        reportKey(code, "ecarx");
+        onWheelAction(WheelNavigator.actionFor(code));
+    }
+
+    private void onWheelAction(WheelNavigator.Action action) {
+        if (action == WheelNavigator.Action.CONFIRM) {
+            View chosen = selectedAnswer >= 0 ? answers[selectedAnswer] : null;
+            if (chosen != null && chosen.isEnabled()) {
+                chosen.performClick();
+            }
+            return;
+        }
+        selectedAnswer = WheelNavigator.move(selectedAnswer, action, enabledAnswers());
+        WheelKeys.showSelection(answers, selectedAnswer);
+    }
+
+    private boolean[] enabledAnswers() {
+        boolean[] enabled = new boolean[answers.length];
+        for (int i = 0; i < answers.length; i++) {
+            enabled[i] = answers[i].isEnabled();
+        }
+        return enabled;
+    }
+
+    /** Diagnostic build only: the driver has no adb, so the code the wheel sent goes on screen. */
+    private void reportKey(int code, String source) {
+        keyDebugText.setText(getString(R.string.popup_key_debug,
+                WheelKeys.describeKey(code), source));
     }
 
     private void getIntentData() {
@@ -386,10 +465,14 @@ public class BarrierPopupActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         gatePoller.start();
+        // Held only while the question is in front of the driver: interception takes these keys
+        // away from the cluster menu and everything else until it is abandoned.
+        wheelKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onVendorKey);
     }
 
     @Override
     protected void onPause() {
+        wheelKeys.stop();
         gatePoller.stop();
         super.onPause();
     }
@@ -422,6 +505,11 @@ public class BarrierPopupActivity extends AppCompatActivity {
         autoDismissText.setVisibility(View.GONE);
         btnWait.setEnabled(false);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_gray_background));
+        // "Wait" is spent; a wheel resting on it would confirm nothing.
+        if (selectedAnswer == answers.length - 1) {
+            selectedAnswer = WheelNavigator.firstEnabled(enabledAnswers());
+        }
+        WheelKeys.showSelection(answers, selectedAnswer);
     }
 
     private void playSound() {
@@ -442,6 +530,11 @@ public class BarrierPopupActivity extends AppCompatActivity {
     }
 
     private void confirmAction() {
+        if (primaryBarrier == null) {
+            // A test question, or a barrier deleted while the popup was up: nothing to trigger.
+            dismissPopup();
+            return;
+        }
         if (closeMode) {
             BarrierAction.triggerClose(this, primaryBarrier);
         } else {
