@@ -24,6 +24,7 @@ import android.content.Intent;
 import android.location.Location;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
@@ -72,6 +73,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private WheelKeys wheelKeys;
     /** The route that works on a Monjaro; {@link #wheelKeys} covers other ECarX units. */
     private OneOsKeys oneOsKeys;
+    /** The same question on the driver's screen, answered with the wheel. */
+    private ClusterPrompt clusterPrompt;
     /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
     private TextView keyDebugText;
 
@@ -156,7 +159,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             resetWaitButton();
             // A fresh question starts on "Yes" — the answer the popup exists to offer.
             selectedAnswer = 0;
-            WheelKeys.showSelection(answers, selectedAnswer);
+            renderSelection();
             restartCountdown();
             playSound();
         }
@@ -176,7 +179,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void resetWaitButton() {
         btnWait.setEnabled(true);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_blue_background));
-        WheelKeys.showSelection(answers, selectedAnswer);
+        renderSelection();
     }
 
     private void showOverLockscreen() {
@@ -228,7 +231,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
         keyDebugText = findViewById(R.id.textKeyDebug);
 
         answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo), btnWait};
-        WheelKeys.showSelection(answers, selectedAnswer);
+        clusterPrompt = new ClusterPrompt(this);
+        renderSelection();
         wheelKeys = new WheelKeys(this);
         oneOsKeys = new OneOsKeys(this);
     }
@@ -277,7 +281,27 @@ public class BarrierPopupActivity extends AppCompatActivity {
             return;
         }
         selectedAnswer = WheelNavigator.move(selectedAnswer, action, enabledAnswers());
+        renderSelection();
+    }
+
+    /**
+     * With the question on the driver's screen, the head-unit copy is only in the way: the driver
+     * asked for the cluster alone. The activity stays — it owns the timer, the sound and the wheel
+     * keys — but draws nothing, dims nothing and lets every touch through to the app beneath.
+     * Only done once the cluster copy is actually up, so a cluster that is missing or refuses the
+     * window still gets the question asked on the head unit.
+     */
+    private void hideOnHeadUnit() {
+        findViewById(android.R.id.content).setVisibility(View.INVISIBLE);
+        getWindow().setBackgroundDrawable(new ColorDrawable(0));
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+    }
+
+    /** Paints the wheel's selection here and on the driver's-screen copy. */
+    private void renderSelection() {
         WheelKeys.showSelection(answers, selectedAnswer);
+        clusterPrompt.render(selectedAnswer, enabledAnswers());
     }
 
     private boolean[] enabledAnswers() {
@@ -434,9 +458,15 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     private void updateUI() {
         if (barrierName != null) {
-            barrierNameText.setText(getString(
+            String title = getString(
                     closeMode ? R.string.popup_close_title_window : R.string.popup_title_window,
-                    barrierName));
+                    barrierName);
+            barrierNameText.setText(title);
+            clusterPrompt.show(title);
+            if (clusterPrompt.isShowing()) {
+                hideOnHeadUnit();
+            }
+            renderSelection();
         }
         autoDismissText.setVisibility(View.VISIBLE);
         autoDismissText.setText(getString(R.string.auto_dismiss,
@@ -522,7 +552,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         if (selectedAnswer == answers.length - 1) {
             selectedAnswer = WheelNavigator.firstEnabled(enabledAnswers());
         }
-        WheelKeys.showSelection(answers, selectedAnswer);
+        renderSelection();
     }
 
     private void playSound() {
@@ -594,6 +624,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             popupLocationManager.destroy();
             popupLocationManager = null;
         }
+        clusterPrompt.dismiss();
         cancelPopupNotification();
         super.onDestroy();
     }

@@ -94,6 +94,7 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
                 + "\nbuild: " + Build.DISPLAY
                 + "\napp: " + BuildConfig.VERSION_NAME
                 + "\noverlay permission: " + Settings.canDrawOverlays(this)
+                + "\npopup copy display: " + ClusterPrompt.chosenDisplay(this)
                 + "\necarx input present: " + WheelKeys.isPresent()
                 + "\necarx dim present: " + DimCallCard.isPresent()
                 + "\n--- displays\n" + ClusterDisplay.describeAll(this));
@@ -110,6 +111,10 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         for (Display d : ClusterDisplay.secondaryDisplays(this)) {
             int id = d.getDisplayId();
             addAction(actions, getString(R.string.car_diag_overlay, id), () -> showOverlay(id));
+            addAction(actions, getString(R.string.car_diag_use_display, id), () -> {
+                ClusterPrompt.chooseDisplay(this, id);
+                appendReport("popup copy display: #" + id);
+            });
             addAction(actions, getString(R.string.car_diag_launch, id), () -> launchPopupOn(id));
             addAction(actions, getString(R.string.car_diag_presentation, id), () -> showPresentation(id));
         }
