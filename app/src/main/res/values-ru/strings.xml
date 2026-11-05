@@ -140,6 +140,18 @@
     <string name="popup_calling_window">Звонок %s…</string>
     <string name="popup_nearby_header">Также в зоне:</string>
     <string name="popup_close_title_window">Закрыть шлагбаум %s?</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_cluster_popup">Всплывашка на приборке</string>
+    <string name="settings_cluster_popup_hint">Вопрос показывается на приборке, под подсказкой навигатора, а не на главном экране. Если дисплея приборки нет, всплывашка появится на главном экране, как раньше.</string>
+    <string name="settings_cluster_display">Дисплей #%1$d (%2$d×%3$d)</string>
+    <string name="settings_wheel_keys">Отвечать кнопками руля ⏮ ⏭ ⏯</string>
+    <string name="settings_wheel_keys_hint">⏮ / ⏭ — выбор, ⏯ — нажать. Нужны root и включённый ADB по сети (как для MConfig+); в первый раз головное устройство спросит, разрешить ли отладку.</string>
+    <string name="settings_mute_media">Не управлять музыкой этими кнопками, пока висит вопрос</string>
+    <string name="settings_mute_media_hint">Музыка продолжает играть, но не переключается этими кнопками, пока висит вопрос. Делается так же, как в MConfig+ (перезапуск сервиса кнопок), и возвращается, когда вопрос уходит.</string>
+    <string name="settings_check_root">Проверить root-доступ</string>
+    <string name="settings_check_root_running">Проверяю… если на экране спросят, разрешите отладку.</string>
+    <string name="settings_check_root_ok">Root через ADB работает.</string>
+    <string name="settings_check_root_failed">Root недоступен: %1$s</string>
     <string name="popup_key_debug">Руль: %1$s (%2$s)</string>
 
     <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->

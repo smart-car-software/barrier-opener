@@ -47,6 +47,12 @@ public final class WheelNavigator {
     static final int ECARX_DMSM_LEFT = 300001;
     static final int ECARX_DMSM_RIGHT = 300002;
     static final int ECARX_DMSM_CENTER = 300003;
+    // The Monjaro's right-hand media keys, as the ECarX input library logs them (InputImpl). On
+    // that car these are the keys the driver can answer with: the left joystick belongs to the
+    // cluster and reaches Android by no route at all.
+    static final int ECARX_MEDIA_PREVIOUS = 200088;
+    static final int ECARX_MEDIA_NEXT = 200087;
+    static final int ECARX_MEDIA_PLAY_PAUSE = 200085;
 
     /**
      * What the popup asks the vendor SDK to hand over while it is on screen. Deliberately not
@@ -71,17 +77,20 @@ public final class WheelNavigator {
             case KEYCODE_SYSTEM_NAVIGATION_LEFT:
             case KEYCODE_SYSTEM_NAVIGATION_UP:
             case ECARX_DMSM_LEFT:
+            case ECARX_MEDIA_PREVIOUS:
                 return Action.PREVIOUS;
             case KEYCODE_DPAD_RIGHT:
             case KEYCODE_DPAD_DOWN:
             case KEYCODE_SYSTEM_NAVIGATION_RIGHT:
             case KEYCODE_SYSTEM_NAVIGATION_DOWN:
             case ECARX_DMSM_RIGHT:
+            case ECARX_MEDIA_NEXT:
                 return Action.NEXT;
             case KEYCODE_DPAD_CENTER:
             case KEYCODE_ENTER:
             case KEYCODE_NUMPAD_ENTER:
             case ECARX_DMSM_CENTER:
+            case ECARX_MEDIA_PLAY_PAUSE:
                 return Action.CONFIRM;
             default:
                 return Action.NONE;
@@ -105,6 +114,34 @@ public final class WheelNavigator {
             return Action.CONFIRM;
         }
         return Action.NONE;
+    }
+
+    /**
+     * A key press out of the ECarX input library's log, e.g.
+     * {@code onKeyPressed cookie=0 keyCode=200087}. Releases and every other line give -1, so a
+     * press is acted on once however long the key is held.
+     */
+    public static int pressedKeyFromInputImplLog(String line) {
+        if (line == null || !line.contains("onKeyPressed")) {
+            return -1;
+        }
+        int at = line.indexOf("keyCode=");
+        if (at < 0) {
+            return -1;
+        }
+        int start = at + "keyCode=".length();
+        int end = start;
+        while (end < line.length() && Character.isDigit(line.charAt(end))) {
+            end++;
+        }
+        if (end == start) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(line.substring(start, end));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     /**

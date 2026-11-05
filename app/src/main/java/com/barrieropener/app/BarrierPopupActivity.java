@@ -75,6 +75,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private OneOsKeys oneOsKeys;
     /** The cluster joystick on a Monjaro: broadcast by the ECarX input service. */
     private DimKeyBroadcasts dimKeys;
+    /** ⏮ ⏭ ⏯ on a Monjaro, read as root; only with the settings switch on. */
+    private MonjaroWheel monjaroWheel;
     /** The same question on the driver's screen, answered with the wheel. */
     private ClusterPrompt clusterPrompt;
     /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
@@ -239,6 +241,13 @@ public class BarrierPopupActivity extends AppCompatActivity {
         wheelKeys = new WheelKeys(this);
         oneOsKeys = new OneOsKeys(this);
         dimKeys = new DimKeyBroadcasts(this);
+        monjaroWheel = new MonjaroWheel(this);
+        if (AppSettings.wheelKeys(this)) {
+            // For the popup's whole life, not per resume: muting restarts the input service, and
+            // a popup flickering through pause/resume must not do that over and over.
+            monjaroWheel.start((code, pressed) -> onInterceptedKey(code, pressed, "wheel"),
+                    AppSettings.muteMedia(this));
+        }
     }
 
     /**
@@ -637,6 +646,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             popupLocationManager = null;
         }
         clusterPrompt.dismiss();
+        monjaroWheel.stop();
         cancelPopupNotification();
         super.onDestroy();
     }

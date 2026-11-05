@@ -72,6 +72,31 @@ public class WheelNavigatorTest {
     }
 
     @Test
+    public void monjaroMediaKeysAnswerTheQuestion() {
+        assertEquals(WheelNavigator.Action.PREVIOUS, WheelNavigator.actionFor(200088));
+        assertEquals(WheelNavigator.Action.NEXT, WheelNavigator.actionFor(200087));
+        assertEquals(WheelNavigator.Action.CONFIRM, WheelNavigator.actionFor(200085));
+        // Volume stays volume.
+        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(200024));
+        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(200025));
+    }
+
+    @Test
+    public void readsPressesFromTheInputImplLog() {
+        assertEquals(200087, WheelNavigator.pressedKeyFromInputImplLog(
+                "onKeyPressed cookie=0 keyCode=200087"));
+        assertEquals(200085, WheelNavigator.pressedKeyFromInputImplLog(
+                "13:30:28.710 onKeyPressed cookie=0 keyCode=200085"));
+        // A release must not act a second time.
+        assertEquals(-1, WheelNavigator.pressedKeyFromInputImplLog(
+                "onKeyReleased cookie=0 keyCode=200087"));
+        assertEquals(-1, WheelNavigator.pressedKeyFromInputImplLog("onKeyPressed cookie=0"));
+        assertEquals(-1, WheelNavigator.pressedKeyFromInputImplLog("onKeyPressed keyCode="));
+        assertEquals(-1, WheelNavigator.pressedKeyFromInputImplLog(""));
+        assertEquals(-1, WheelNavigator.pressedKeyFromInputImplLog(null));
+    }
+
+    @Test
     public void movesOneStep() {
         assertEquals(1, WheelNavigator.move(0, WheelNavigator.Action.NEXT, ALL));
         assertEquals(0, WheelNavigator.move(1, WheelNavigator.Action.PREVIOUS, ALL));

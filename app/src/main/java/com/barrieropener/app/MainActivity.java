@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
         fabAdd.setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, AddEditBarrierActivity.class)));
 
+        findViewById(R.id.btnSettings).setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class)));
         findViewById(R.id.btnAbout).setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, AboutActivity.class)));
     }

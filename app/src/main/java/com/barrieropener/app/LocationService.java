@@ -109,6 +109,9 @@ public class LocationService extends Service {
         locationManager = new LocationManager(this);
         gearMonitor = new GearMonitor(this);
         hostReachability = new HostReachability();
+        // A popup that died with the media keys muted would leave the wheel unable to skip tracks
+        // until someone noticed; the service is the first thing to run after a crash or reboot.
+        MonjaroWheel.restoreIfLeftMuted(this);
         // Armed here rather than in onStartCommand: MainActivity re-issues startForegroundService
         // on every resume, and re-arming there would greet the driver with an "open the gate?"
         // popup every time they came back to the app while parked at home.

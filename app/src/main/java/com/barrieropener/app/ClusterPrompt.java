@@ -64,12 +64,15 @@ final class ClusterPrompt {
         this.context = context;
     }
 
+    /** The display to use, or {@link #NONE} while the settings switch is off. */
     static int chosenDisplay(Context context) {
-        return prefs(context).getInt(KEY_DISPLAY, NONE);
+        return AppSettings.clusterPopup(context) ? AppSettings.clusterDisplay(context) : NONE;
     }
 
+    /** Diagnostics' shortcut: choose the display and switch the feature on. */
     static void chooseDisplay(Context context, int displayId) {
-        prefs(context).edit().putInt(KEY_DISPLAY, displayId).apply();
+        AppSettings.setClusterDisplay(context, displayId);
+        AppSettings.setClusterPopup(context, true);
     }
 
     private static SharedPreferences prefs(Context context) {

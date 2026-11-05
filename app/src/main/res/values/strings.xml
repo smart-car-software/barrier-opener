@@ -132,6 +132,18 @@
     <string name="popup_calling_window">Calling %s…</string>
     <string name="popup_nearby_header">Also in range:</string>
     <string name="popup_close_title_window">Close barrier %s?</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_cluster_popup">Popup on the driver's screen</string>
+    <string name="settings_cluster_popup_hint">The question appears on the instrument cluster, under the navigation hint, instead of the head unit. If the cluster display is missing, it shows on the head unit as before.</string>
+    <string name="settings_cluster_display">Display #%1$d (%2$d×%3$d)</string>
+    <string name="settings_wheel_keys">Answer with the wheel ⏮ ⏭ ⏯</string>
+    <string name="settings_wheel_keys_hint">⏮ / ⏭ choose, ⏯ presses. Needs root and adb over the network switched on (as for MConfig+); the first time the unit asks to allow debugging.</string>
+    <string name="settings_mute_media">Keep those keys from controlling music while asking</string>
+    <string name="settings_mute_media_hint">The music keeps playing but ignores these keys while the question is up. Done the way MConfig+ does it (restarts the key service) and undone when the question goes.</string>
+    <string name="settings_check_root">Check root access</string>
+    <string name="settings_check_root_running">Checking… allow debugging on the screen if asked.</string>
+    <string name="settings_check_root_ok">Root through adb works.</string>
+    <string name="settings_check_root_failed">No root: %1$s</string>
     <string name="popup_key_debug">Wheel: %1$s (%2$s)</string>
 
     <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->

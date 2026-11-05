@@ -34,6 +34,17 @@
                 android:textStyle="bold" />
 
             <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings_title"
+                android:src="@drawable/ic_settings"
+                app:tint="@color/text_secondary"
+                xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+            <ImageButton
                 android:id="@+id/btnAbout"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
