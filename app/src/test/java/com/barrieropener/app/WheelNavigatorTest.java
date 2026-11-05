@@ -18,6 +18,8 @@
 package com.barrieropener.app;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -56,6 +58,26 @@ public class WheelNavigatorTest {
         // Volume stays volume.
         assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(200024));
         assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(200025));
+    }
+
+    @Test
+    public void mediaSessionKeysAnswerOnlyThroughTheirOwnMapping() {
+        assertEquals(WheelNavigator.Action.PREVIOUS, WheelNavigator.actionForMediaKey(88));
+        assertEquals(WheelNavigator.Action.NEXT, WheelNavigator.actionForMediaKey(87));
+        assertEquals(WheelNavigator.Action.CONFIRM, WheelNavigator.actionForMediaKey(85));
+        assertEquals(WheelNavigator.Action.CONFIRM, WheelNavigator.actionForMediaKey(126));
+        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionForMediaKey(24));
+        // An ordinary key event for next track is still not an answer.
+        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(87));
+    }
+
+    @Test
+    public void onePressBothRoutesActsOnce() {
+        WheelNavigator.Action next = WheelNavigator.Action.NEXT;
+        assertTrue(WheelNavigator.isEcho(next, 1_100, next, 1_000));
+        assertFalse(WheelNavigator.isEcho(next, 1_400, next, 1_000));
+        assertFalse(WheelNavigator.isEcho(WheelNavigator.Action.CONFIRM, 1_100, next, 1_000));
+        assertFalse(WheelNavigator.isEcho(next, 1_000, WheelNavigator.Action.NONE, 0));
     }
 
     @Test

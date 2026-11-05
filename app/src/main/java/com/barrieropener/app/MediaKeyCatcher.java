@@ -50,8 +50,12 @@ final class MediaKeyCatcher {
         this.context = context.getApplicationContext();
     }
 
-    /** @param listener told about each key the player was kept from; may be null */
-    void start(WheelKeys.Listener listener) {
+    /**
+     * @param listener told about each key the player was kept from — on a Monjaro the only place
+     *                 the wheel's presses arrive while this holds them; may be null
+     * @return whether the keys are held (the silent track is playing)
+     */
+    boolean start(WheelKeys.Listener listener) {
         stop();
         MediaSession s = new MediaSession(context, "barrier-opener-question");
         s.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS
@@ -74,6 +78,7 @@ final class MediaKeyCatcher {
         s.setActive(true);
         session = s;
         silence = playSilence();
+        return silence != null;
     }
 
     /** A looping buffer of zeros as media audio: "playing", inaudible, no focus requested. */

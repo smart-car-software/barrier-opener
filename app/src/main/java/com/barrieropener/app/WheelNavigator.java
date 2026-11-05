@@ -84,6 +84,47 @@ public final class WheelNavigator {
         }
     }
 
+    // Android's media key codes, as a media session receives them.
+    static final int KEYCODE_HEADSETHOOK = 79;
+    static final int KEYCODE_MEDIA_PLAY_PAUSE = 85;
+    static final int KEYCODE_MEDIA_NEXT = 87;
+    static final int KEYCODE_MEDIA_PREVIOUS = 88;
+    static final int KEYCODE_MEDIA_PLAY = 126;
+    static final int KEYCODE_MEDIA_PAUSE = 127;
+
+    /**
+     * The same three wheel keys when they come to the popup's own media session instead — which
+     * is where they go, and the only place they go, while the popup holds the media keys away
+     * from the player: the ECarX key log then stays silent. Kept apart from {@link #actionFor},
+     * which also reads ordinary key events: a media key there must stay a media key.
+     */
+    public static Action actionForMediaKey(int keyCode) {
+        switch (keyCode) {
+            case KEYCODE_MEDIA_PREVIOUS:
+                return Action.PREVIOUS;
+            case KEYCODE_MEDIA_NEXT:
+                return Action.NEXT;
+            case KEYCODE_MEDIA_PLAY_PAUSE:
+            case KEYCODE_MEDIA_PLAY:
+            case KEYCODE_MEDIA_PAUSE:
+            case KEYCODE_HEADSETHOOK:
+                return Action.CONFIRM;
+            default:
+                return Action.NONE;
+        }
+    }
+
+    /**
+     * Whether a press is the same one already acted on, arriving by a second route (the key log
+     * and the media session can both carry it). Two presses of one key closer than this are not
+     * something a driver does; a double "confirm" is the impulse a sliding gate reads as "stop".
+     */
+    static final long SAME_PRESS_MS = 300L;
+
+    public static boolean isEcho(Action action, long atMs, Action lastAction, long lastAtMs) {
+        return action == lastAction && atMs - lastAtMs >= 0 && atMs - lastAtMs < SAME_PRESS_MS;
+    }
+
     /**
      * A key press out of the ECarX input library's log, e.g.
      * {@code onKeyPressed cookie=0 keyCode=200087}. Releases and every other line give -1, so a

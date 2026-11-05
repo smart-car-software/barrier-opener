@@ -29,7 +29,7 @@ import android.widget.TextView;
 
 /**
  * The popup's question on the driver's screen. Once it is up the head-unit popup hides itself
- * (see {@code BarrierPopupActivity.hideOnHeadUnit}) and keeps only the logic: the timer, the
+ * (see {@code BarrierPopupActivity.updateHeadUnitVisibility}) and keeps only the logic: the timer, the
  * sound, the wheel keys. Yes / No only, and no timer — the driver answers with the wheel.
  *
  * <p>Drawn as an overlay window on the cluster display. On a Monjaro that is what works:

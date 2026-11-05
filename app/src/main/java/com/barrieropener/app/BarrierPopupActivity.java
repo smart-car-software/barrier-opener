@@ -89,6 +89,20 @@ public class BarrierPopupActivity extends AppCompatActivity {
      * answered.
      */
     private boolean onCluster;
+    /** The wheel's key log is being followed. */
+    private boolean wheelConnected;
+    /** The media keys are held — and with them the wheel's presses, see MediaKeyCatcher. */
+    private boolean mediaHeld;
+    private WheelNavigator.Action lastAction = WheelNavigator.Action.NONE;
+    private long lastActionAt;
+    private boolean headUnitHidden;
+    /**
+     * The cluster has no timer, but a question nobody can answer must still go some time: should
+     * every way of answering fail at once, this is the last word.
+     */
+    private static final long CLUSTER_GIVE_UP_MS = 5 * 60_000L;
+    private final android.os.Handler clusterTimeout = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable giveUp = this::dismissPopup;
     private long primaryId = -1;
     private Barrier primaryBarrier;
     private long[] nearbyIds;
@@ -234,11 +248,18 @@ public class BarrierPopupActivity extends AppCompatActivity {
         if (AppSettings.wheelKeys(this)) {
             // For the popup's whole life, not per resume: the root log stream takes a second to
             // connect, and a popup flickering through pause/resume must not reopen it each time.
-            monjaroWheel.start(this::onWheelKey);
+            monjaroWheel.start(this::onWheelKey, connected -> {
+                wheelConnected = connected;
+                updateHeadUnitVisibility();
+            });
             if (AppSettings.muteMedia(this)) {
-                // The keys themselves are read from the log above; this only keeps the player
-                // from also acting on them.
-                mediaKeys.start(null);
+                // Keeps the player from acting on the keys — and, while it does, is where the
+                // presses arrive: the key log above goes quiet for as long as this holds them.
+                mediaHeld = mediaKeys.start((code, pressed) -> {
+                    if (pressed && !isFinishing()) {
+                        onWheelAction(WheelNavigator.actionForMediaKey(code));
+                    }
+                });
             }
         }
     }
@@ -269,6 +290,15 @@ public class BarrierPopupActivity extends AppCompatActivity {
     }
 
     private void onWheelAction(WheelNavigator.Action action) {
+        if (action == WheelNavigator.Action.NONE) {
+            return;
+        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (WheelNavigator.isEcho(action, now, lastAction, lastActionAt)) {
+            return; // The same press, arriving by the second route.
+        }
+        lastAction = action;
+        lastActionAt = now;
         if (action == WheelNavigator.Action.CONFIRM) {
             View chosen = selectedAnswer >= 0 ? answers[selectedAnswer] : null;
             if (chosen != null && chosen.isEnabled()) {
@@ -282,16 +312,30 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     /**
      * With the question on the driver's screen, the head-unit copy is only in the way: the driver
-     * asked for the cluster alone. The activity stays — it owns the timer, the sound and the wheel
-     * keys — but draws nothing, dims nothing and lets every touch through to the app beneath.
-     * Only done once the cluster copy is actually up, so a cluster that is missing or refuses the
-     * window still gets the question asked on the head unit.
+     * asked for the cluster alone. The activity stays — it owns the sound and the wheel keys — but
+     * draws nothing, dims nothing and lets every touch through to the app beneath.
+     *
+     * <p>Only while the cluster copy is up <em>and</em> the wheel can answer it. The cluster has
+     * no touch; with the wheel's key log not (or no longer) followed, a hidden head unit would
+     * leave a question nobody can answer — which is exactly what happened on the car when the log
+     * did not connect for a closing question. Then the head unit shows it again, tappable.
      */
-    private void hideOnHeadUnit() {
-        findViewById(android.R.id.content).setVisibility(View.INVISIBLE);
-        getWindow().setBackgroundDrawable(new ColorDrawable(0));
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+    private void updateHeadUnitVisibility() {
+        boolean hide = onCluster && (wheelConnected || mediaHeld);
+        if (hide == headUnitHidden) {
+            return;
+        }
+        headUnitHidden = hide;
+        findViewById(android.R.id.content).setVisibility(hide ? View.INVISIBLE : View.VISIBLE);
+        if (hide) {
+            getWindow().setBackgroundDrawable(new ColorDrawable(0));
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        } else {
+            getWindow().setBackgroundDrawableResource(R.color.scrim_80);
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        }
     }
 
     /** Paints the wheel's selection here and on the driver's-screen copy. */
@@ -455,7 +499,11 @@ public class BarrierPopupActivity extends AppCompatActivity {
             clusterPrompt.show(title);
             if (clusterPrompt.isShowing() && !onCluster) {
                 onCluster = true;
-                hideOnHeadUnit();
+                // The head unit mirrors the cluster's Yes / No when it has to show at all.
+                btnWait.setVisibility(View.GONE);
+                autoDismissText.setVisibility(View.GONE);
+                clusterTimeout.postDelayed(giveUp, CLUSTER_GIVE_UP_MS);
+                updateHeadUnitVisibility();
                 answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo)};
                 if (selectedAnswer >= answers.length) {
                     selectedAnswer = 0;
@@ -467,9 +515,11 @@ public class BarrierPopupActivity extends AppCompatActivity {
             }
             renderSelection();
         }
-        autoDismissText.setVisibility(View.VISIBLE);
-        autoDismissText.setText(getString(R.string.auto_dismiss,
-                (int) (AUTO_DISMISS_DELAY_MS / 1000L)));
+        if (!onCluster) {
+            autoDismissText.setVisibility(View.VISIBLE);
+            autoDismissText.setText(getString(R.string.auto_dismiss,
+                    (int) (AUTO_DISMISS_DELAY_MS / 1000L)));
+        }
     }
 
     /**
@@ -621,6 +671,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             popupLocationManager.destroy();
             popupLocationManager = null;
         }
+        clusterTimeout.removeCallbacks(giveUp);
         clusterPrompt.dismiss();
         monjaroWheel.stop();
         mediaKeys.stop();

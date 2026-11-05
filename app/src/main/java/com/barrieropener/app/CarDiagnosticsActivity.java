@@ -118,7 +118,8 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
     private void log(String source, int code, boolean pressed) {
         String line = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date())
                 + " " + source + " " + WheelKeys.describeKey(code)
-                + " → " + WheelNavigator.actionFor(code) + (pressed ? "" : " (up)");
+                + " → " + (source.equals("wheel") ? WheelNavigator.actionFor(code)
+                        : WheelNavigator.actionForMediaKey(code)) + (pressed ? "" : " (up)");
         keyLog.addFirst(line);
         while (keyLog.size() > LOG_LINES) {
             keyLog.removeLast();

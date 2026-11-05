@@ -67,8 +67,13 @@ final class MonjaroWheel {
         this.context = context.getApplicationContext();
     }
 
+    interface StateListener {
+        /** Main thread: the key log is being followed (true), or is not / no longer (false). */
+        void onWheelState(boolean connected);
+    }
+
     /** Starts following the key log; harmless on units without adb or the service. */
-    void start(WheelKeys.Listener listener) {
+    void start(WheelKeys.Listener listener, StateListener state) {
         if (running) {
             return;
         }
@@ -80,6 +85,7 @@ final class MonjaroWheel {
                     return;
                 }
                 logStream = adb;
+                main.post(() -> state.onWheelState(true));
                 // -T 1: from now on, not the presses already in the log buffer.
                 adb.shell("su 0 sh -c 'logcat -b main -v raw -T 1 InputImpl:V *:S'", text -> {
                     pending.append(text);
@@ -93,9 +99,12 @@ final class MonjaroWheel {
                     }
                 });
             } catch (Exception e) {
-                Log.d(TAG, "Wheel log ended", e);
+                Log.w(TAG, "Wheel log ended", e);
             }
             logStream = null;
+            // Ended on its own (adb gone, root refused) or because the popup stopped it: either
+            // way the wheel no longer answers, and the popup must not rely on it.
+            main.post(() -> state.onWheelState(false));
         }, "MonjaroWheel");
         reader.setDaemon(true);
         reader.start();
