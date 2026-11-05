@@ -150,31 +150,12 @@
 
     <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->
     <string name="car_diag_title">Wheel &amp; cluster</string>
-    <string name="car_diag_hint">Press every steering-wheel button (joystick: left, right, up, down, OK) — each press should appear below. Then try the driver\'s-screen tests and note what showed up on the cluster. \"Copy report\" puts everything on the clipboard.</string>
+    <string name="car_diag_hint">Tap \"Wheel key log\" and press the wheel keys — each press shows below with what it does in the popup. \"Take the media keys from the player\" checks that the music ignores them while a question is up.</string>
     <string name="car_diag_no_keys">No keys yet.</string>
-    <string name="car_diag_overlay">Window over the cluster on display #%1$d</string>
-    <string name="car_diag_overlay_focus">Window over the cluster on display #%1$d, catching the wheel</string>
-    <string name="car_diag_use_display">Show the popup on display #%1$d too</string>
-    <string name="car_diag_launch">Popup activity on display #%1$d</string>
-    <string name="car_diag_presentation">Presentation on display #%1$d</string>
-    <string name="car_diag_no_displays">Android sees no display besides this screen.</string>
-    <string name="car_diag_call_incoming">Cluster call card: show (incoming)</string>
-    <string name="car_diag_call_ringing">Cluster call card: show (ringing)</string>
-    <string name="car_diag_call_clear">Cluster call card: remove</string>
     <string name="car_diag_copy">Copy report</string>
     <string name="car_diag_media_on">Take the media keys from the player (test)</string>
     <string name="car_diag_media_off">Give the media keys back</string>
-    <string name="car_diag_root_check">Root: check access (first time: allow debugging on the screen)</string>
-    <string name="car_diag_root_inputimpl">Root: ECarX key log (InputImpl)</string>
-    <string name="car_diag_root_logcat">Root: whole log, lines with key / dim</string>
-    <string name="car_diag_root_tcpdump">Root: vehicle network packets (as MConfig)</string>
-    <string name="car_diag_root_tcpdump_all">Root: all packets from port 50500 (400)</string>
-    <string name="car_diag_root_media_log">Root: key service + media centre log (press ⏭ with music on)</string>
-    <string name="car_diag_root_media_session">Root: who holds the media keys (dumpsys)</string>
-    <string name="car_diag_root_media_strings">Root: media in the key service code</string>
-    <string name="car_diag_root_inputimpl_pid">Root: who logs the keys (process list + InputImpl with pid)</string>
-    <string name="car_diag_intercept_media">ECarX: intercept ⏮ ⏭ ⏯ only (then press them with music on)</string>
-    <string name="car_diag_root_stop">Root: stop</string>
+    <string name="car_diag_root_inputimpl">Wheel key log (root through adb)</string>
     <string name="car_diag_copied">Report copied</string>
     <string name="car_diag_share">Share report</string>
     <string name="car_diag_test_barrier">Test</string>

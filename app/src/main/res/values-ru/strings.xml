@@ -158,31 +158,12 @@
 
     <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->
     <string name="car_diag_title">Руль и приборка</string>
-    <string name="car_diag_hint">Нажмите все кнопки на руле (джойстик: влево, вправо, вверх, вниз, ОК) — каждое нажатие должно появиться ниже. Затем попробуйте тесты экрана водителя и запомните, что появилось на приборке. «Скопировать отчёт» кладёт всё в буфер обмена.</string>
+    <string name="car_diag_hint">Нажмите «Лог кнопок руля» и понажимайте кнопки — каждое нажатие появится ниже с тем, что оно делает во всплывашке. «Забрать медиакнопки у плеера» проверяет, что музыка не реагирует на них, пока висит вопрос.</string>
     <string name="car_diag_no_keys">Нажатий пока нет.</string>
-    <string name="car_diag_overlay">Окно поверх приборки на дисплее #%1$d</string>
-    <string name="car_diag_overlay_focus">Окно поверх приборки на дисплее #%1$d, ловит кнопки руля</string>
-    <string name="car_diag_use_display">Дублировать всплывашку на дисплей #%1$d</string>
-    <string name="car_diag_launch">Всплывашка на дисплее #%1$d</string>
-    <string name="car_diag_presentation">Presentation на дисплее #%1$d</string>
-    <string name="car_diag_no_displays">Android не видит других дисплеев, кроме этого экрана.</string>
-    <string name="car_diag_call_incoming">Карточка звонка на приборке: показать (входящий)</string>
-    <string name="car_diag_call_ringing">Карточка звонка на приборке: показать (звонит)</string>
-    <string name="car_diag_call_clear">Карточка звонка на приборке: убрать</string>
     <string name="car_diag_copy">Скопировать отчёт</string>
     <string name="car_diag_media_on">Забрать медиакнопки у плеера (тест)</string>
     <string name="car_diag_media_off">Вернуть медиакнопки плееру</string>
-    <string name="car_diag_root_check">Root: проверить доступ (в первый раз разрешите отладку на экране)</string>
-    <string name="car_diag_root_inputimpl">Root: лог кнопок ECarX (InputImpl)</string>
-    <string name="car_diag_root_logcat">Root: весь лог, строки с key / dim</string>
-    <string name="car_diag_root_tcpdump">Root: пакеты сети автомобиля (как MConfig)</string>
-    <string name="car_diag_root_tcpdump_all">Root: все пакеты с порта 50500 (400 шт.)</string>
-    <string name="car_diag_root_media_log">Root: лог сервиса кнопок и медиацентра (жми ⏭ с музыкой)</string>
-    <string name="car_diag_root_media_session">Root: кто получает медиакнопки (dumpsys)</string>
-    <string name="car_diag_root_media_strings">Root: media в коде сервиса кнопок</string>
-    <string name="car_diag_root_inputimpl_pid">Root: кто пишет кнопки (процессы + InputImpl с pid)</string>
-    <string name="car_diag_intercept_media">ECarX: перехватить только ⏮ ⏭ ⏯ (потом жми их с музыкой)</string>
-    <string name="car_diag_root_stop">Root: остановить</string>
+    <string name="car_diag_root_inputimpl">Лог кнопок руля (root через ADB)</string>
     <string name="car_diag_copied">Отчёт скопирован</string>
     <string name="car_diag_share">Отправить отчёт</string>
     <string name="car_diag_test_barrier">Тест</string>
