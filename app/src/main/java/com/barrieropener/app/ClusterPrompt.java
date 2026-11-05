@@ -139,6 +139,16 @@ final class ClusterPrompt {
         }
     }
 
+    /** Diagnostic build only: a small status line under the answers. */
+    void setStatus(String text) {
+        if (card == null) {
+            return;
+        }
+        TextView status = card.findViewById(R.id.clusterStatus);
+        status.setVisibility(View.VISIBLE);
+        status.setText(text);
+    }
+
     boolean isShowing() {
         return card != null;
     }

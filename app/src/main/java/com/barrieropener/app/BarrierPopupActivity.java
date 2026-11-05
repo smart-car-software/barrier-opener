@@ -248,6 +248,11 @@ public class BarrierPopupActivity extends AppCompatActivity {
         oneOsKeys = new OneOsKeys(this);
         dimKeys = new DimKeyBroadcasts(this);
         monjaroWheel = new MonjaroWheel(this);
+        monjaroWheel.setMuteReport(status -> {
+            String line = getString(R.string.popup_mute_debug, status);
+            keyDebugText.setText(line);
+            clusterPrompt.setStatus(line);
+        });
         if (AppSettings.wheelKeys(this)) {
             // For the popup's whole life, not per resume: muting restarts the input service, and
             // a popup flickering through pause/resume must not do that over and over.

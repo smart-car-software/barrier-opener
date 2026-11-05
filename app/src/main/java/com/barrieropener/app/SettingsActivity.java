@@ -76,6 +76,19 @@ public class SettingsActivity extends AppCompatActivity {
                         .putExtra("barrier_id", -1L)
                         .putExtra(BarrierPopupActivity.EXTRA_TEST, true)));
 
+        TextView probe = findViewById(R.id.textProbeMute);
+        findViewById(R.id.btnProbeMute).setOnClickListener(v -> {
+            probe.setText(R.string.settings_check_root_running);
+            StringBuilder out = new StringBuilder();
+            check.start(MonjaroWheel.PROBE, null, line -> {
+                if (line == null) {
+                    probe.setText(out.toString().trim());
+                } else {
+                    out.append(line).append('\n');
+                }
+            });
+        });
+
         TextView status = findViewById(R.id.textWheelStatus);
         check = new RootStream(this);
         findViewById(R.id.btnCheckWheel).setOnClickListener(v -> {

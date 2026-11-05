@@ -63,13 +63,30 @@ final class MonjaroWheel {
     }
 
     /** Starts listening (and muting the player); harmless on units without adb or the service. */
+    /** What became of the mute, for the diagnostic line under the popup. Main thread. */
+    interface MuteReport {
+        void onMuteReport(String status);
+    }
+
+    private MuteReport muteReport;
+
+    void setMuteReport(MuteReport report) {
+        this.muteReport = report;
+    }
+
     void start(WheelKeys.Listener listener, boolean muteMedia) {
         if (running) {
             return;
         }
         running = true;
         if (muteMedia) {
-            ROOT.execute(() -> mute(context));
+            ROOT.execute(() -> {
+                String status = mute(context);
+                MuteReport r = muteReport;
+                if (r != null) {
+                    main.post(() -> r.onMuteReport(status));
+                }
+            });
         }
         Thread reader = new Thread(() -> {
             StringBuilder pending = new StringBuilder();
@@ -119,21 +136,25 @@ final class MonjaroWheel {
         }
     }
 
-    private static void mute(Context context) {
+    private static String mute(Context context) {
         try {
             String muted = run(context, "test -f " + VDEX + " && grep -c " + IEDIA + " " + VDEX);
             String plain = run(context, "test -f " + VDEX + " && grep -c " + MEDIA + " " + VDEX);
             // Only a unit in the stock state is touched: already muted (by the driver, through
             // MConfig+) or patched in some way we do not know — leave it alone.
             if (!"0".equals(muted.trim()) || "0".equals(plain.trim()) || plain.trim().isEmpty()) {
-                Log.i(TAG, "Media keys not muted: state iedia=" + muted.trim() + " media=" + plain.trim());
-                return;
+                String state = "not muted: iedia=" + muted.trim() + " media=" + plain.trim();
+                Log.i(TAG, state);
+                return state;
             }
             prefs(context).edit().putBoolean(KEY_MUTED_BY_US, true).commit();
             run(context, "sed -i s#" + MEDIA + "#" + IEDIA + "#g " + VDEX + " && " + RESTART);
-            Log.i(TAG, "Media keys muted");
+            String after = run(context, "grep -c " + IEDIA + " " + VDEX).trim();
+            Log.i(TAG, "Media keys muted, iedia=" + after);
+            return "muted, iedia=" + after;
         } catch (Exception e) {
             Log.w(TAG, "Mute failed", e);
+            return "mute failed: " + WheelKeys.rootCause(e);
         }
     }
 
@@ -159,6 +180,13 @@ final class MonjaroWheel {
         }
         return out.toString();
     }
+
+    /** Where the input service's code actually is on this unit and what it says, for settings. */
+    static final String PROBE = "ls -l /data/dalvik-cache/arm64/ | grep -i -e xsf -e input;"
+            + " ls -lR /system/app/XSFInputService 2>&1 | head -20;"
+            + " echo media=$(grep -c " + MEDIA + " " + VDEX + " 2>&1)"
+            + " iedia=$(grep -c " + IEDIA + " " + VDEX + " 2>&1);"
+            + " ps -A | grep -i inputservice";
 
     private static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);

@@ -60,4 +60,15 @@
             style="@style/ClusterAnswer"
             android:text="@string/btn_wait" />
     </LinearLayout>
+
+    <!-- Diagnostic build only: see ClusterPrompt.setStatus. -->
+    <TextView
+        android:id="@+id/clusterStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6px"
+        android:gravity="center"
+        android:textColor="@color/cluster_text_dim"
+        android:textSize="16px"
+        android:visibility="gone" />
 </LinearLayout>

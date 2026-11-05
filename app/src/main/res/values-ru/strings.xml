@@ -153,6 +153,8 @@
     <string name="settings_check_root_ok">Root через ADB работает.</string>
     <string name="settings_check_root_failed">Root недоступен: %1$s</string>
     <string name="settings_test_popup">Показать тестовый вопрос</string>
+    <string name="popup_mute_debug">Кнопки музыки: %1$s</string>
+    <string name="settings_probe_mute">Показать состояние сервиса кнопок (диагностика)</string>
     <string name="popup_key_debug">Руль: %1$s (%2$s)</string>
 
     <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->
