@@ -112,8 +112,10 @@ final class ClusterPrompt {
                     context.createDisplayContext(display), R.style.Theme_BarrierOpener))
                     .inflate(R.layout.view_cluster_prompt, null);
             ((TextView) v.findViewById(R.id.clusterTitle)).setText(title);
-            answers = new View[]{v.findViewById(R.id.clusterYes),
-                    v.findViewById(R.id.clusterNo), v.findViewById(R.id.clusterWait)};
+            // Yes / No only: on the driver's screen the question has no timer to pause, so
+            // "Wait" would mean nothing — it stays until answered.
+            v.findViewById(R.id.clusterWait).setVisibility(View.GONE);
+            answers = new View[]{v.findViewById(R.id.clusterYes), v.findViewById(R.id.clusterNo)};
             v.setFocusable(true);
             v.setFocusableInTouchMode(true);
             v.setOnKeyListener((view, keyCode, event) -> {

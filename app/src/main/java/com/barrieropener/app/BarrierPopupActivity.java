@@ -94,6 +94,12 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     private String barrierName;
     private boolean closeMode;
+    /**
+     * The question is on the driver's screen: two answers, no timer. A driver who has to look at
+     * the cluster and reach for the wheel gets as long as they need; the question goes only when
+     * answered.
+     */
+    private boolean onCluster;
     private long primaryId = -1;
     private Barrier primaryBarrier;
     private long[] nearbyIds;
@@ -476,8 +482,17 @@ public class BarrierPopupActivity extends AppCompatActivity {
                     barrierName);
             barrierNameText.setText(title);
             clusterPrompt.show(title);
-            if (clusterPrompt.isShowing()) {
+            if (clusterPrompt.isShowing() && !onCluster) {
+                onCluster = true;
                 hideOnHeadUnit();
+                answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo)};
+                if (selectedAnswer >= answers.length) {
+                    selectedAnswer = 0;
+                }
+                if (countdown != null) {
+                    countdown.cancel();
+                    countdown = null;
+                }
             }
             renderSelection();
         }
@@ -544,6 +559,10 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void restartCountdown() {
         if (countdown != null) {
             countdown.cancel();
+            countdown = null;
+        }
+        if (onCluster) {
+            return; // No timer on the driver's screen.
         }
         autoDismissText.setVisibility(View.VISIBLE);
         countdown = new CountDownTimer(AUTO_DISMISS_DELAY_MS, COUNTDOWN_TICK_MS) {
