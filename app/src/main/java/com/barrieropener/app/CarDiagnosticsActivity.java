@@ -160,6 +160,14 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         // Where the music gets the wheel from, when not from MEDIA_BUTTON: the key service's and
         // the media centre's own log lines around a press, who holds the media keys, and what the
         // key service's code says about media.
+        // Which process the InputImpl key lines come from — the one the key service hands the
+        // wheel to — and the ECarX interception asked again, for just the three media keys and
+        // after the vendor service has had time to connect.
+        addAction(actions, getString(R.string.car_diag_root_inputimpl_pid), () -> startRoot(
+                "ps -A | grep -i -e ecarx -e yandex -e geely;"
+                        + " logcat -b main -v brief -T 1 InputImpl:V *:S",
+                null));
+        addAction(actions, getString(R.string.car_diag_intercept_media), this::interceptMediaKeys);
         addAction(actions, getString(R.string.car_diag_root_media_log), () -> startRoot(
                 "I=$(pidof ecarx.xsf.inputservice); M=$(pidof ecarx.xsf.mediacenter);"
                         + " echo inputservice=$I mediacenter=$M;"
@@ -405,6 +413,23 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
             appendReport("launch popup on #" + displayId + ": started");
         } catch (Throwable t) {
             appendReport("launch popup on #" + displayId + " failed: " + WheelKeys.rootCause(t));
+        }
+    }
+
+    private static final int[] MEDIA_KEYS = {
+            WheelNavigator.ECARX_MEDIA_PREVIOUS, WheelNavigator.ECARX_MEDIA_NEXT,
+            WheelNavigator.ECARX_MEDIA_PLAY_PAUSE};
+
+    private void interceptMediaKeys() {
+        appendReport("--- ecarx intercept ⏮⏭⏯");
+        WheelKeys.Listener l = (code, pressed) -> logKey("intercept", code, pressed ? "press" : "release");
+        boolean ok = wheelKeys.start(MEDIA_KEYS, l);
+        appendReport("now: " + ok + "\n" + wheelKeys.report());
+        for (long delay : new long[]{2_000L, 5_000L}) {
+            main.postDelayed(() -> {
+                boolean again = wheelKeys.start(MEDIA_KEYS, l);
+                appendReport("after " + delay + " ms: " + again + "\n" + wheelKeys.report());
+            }, delay);
         }
     }
 

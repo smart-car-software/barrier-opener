@@ -77,6 +77,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private DimKeyBroadcasts dimKeys;
     /** ⏮ ⏭ ⏯ on a Monjaro, read as root; only with the settings switch on. */
     private MonjaroWheel monjaroWheel;
+    /** Holds the media keys away from the player while the wheel answers. */
+    private MediaKeyCatcher mediaKeys;
     /** The same question on the driver's screen, answered with the wheel. */
     private ClusterPrompt clusterPrompt;
     /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
@@ -248,16 +250,23 @@ public class BarrierPopupActivity extends AppCompatActivity {
         oneOsKeys = new OneOsKeys(this);
         dimKeys = new DimKeyBroadcasts(this);
         monjaroWheel = new MonjaroWheel(this);
-        monjaroWheel.setMuteReport(status -> {
-            String line = getString(R.string.popup_mute_debug, status);
-            keyDebugText.setText(line);
-            clusterPrompt.setStatus(line);
-        });
+        mediaKeys = new MediaKeyCatcher(this);
         if (AppSettings.wheelKeys(this)) {
-            // For the popup's whole life, not per resume: muting restarts the input service, and
-            // a popup flickering through pause/resume must not do that over and over.
-            monjaroWheel.start((code, pressed) -> onInterceptedKey(code, pressed, "wheel"),
-                    AppSettings.muteMedia(this));
+            // For the popup's whole life, not per resume: the root log stream takes a second to
+            // connect, and a popup flickering through pause/resume must not reopen it each time.
+            monjaroWheel.start((code, pressed) -> onInterceptedKey(code, pressed, "wheel"), false);
+            if (AppSettings.muteMedia(this)) {
+                // The keys themselves are read from the log above; this only keeps the player
+                // from also acting on them. Diagnostic build: say so when one is held back.
+                mediaKeys.start((code, pressed) -> {
+                    if (pressed) {
+                        String line = getString(R.string.popup_mute_debug,
+                                WheelKeys.describeKey(code));
+                        keyDebugText.setText(line);
+                        clusterPrompt.setStatus(line);
+                    }
+                });
+            }
         }
     }
 
@@ -671,6 +680,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         }
         clusterPrompt.dismiss();
         monjaroWheel.stop();
+        mediaKeys.stop();
         cancelPopupNotification();
         super.onDestroy();
     }

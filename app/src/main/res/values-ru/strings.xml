@@ -146,13 +146,13 @@
     <string name="settings_wheel_keys">Отвечать кнопками руля ⏮ ⏭ ⏯</string>
     <string name="settings_wheel_keys_hint">⏮ / ⏭ — выбор, ⏯ — нажать. Нужны root и включённый ADB по сети (как для MConfig+); в первый раз головное устройство спросит, разрешить ли отладку.</string>
     <string name="settings_mute_media">Не управлять музыкой этими кнопками, пока висит вопрос</string>
-    <string name="settings_mute_media_hint">Музыка продолжает играть, но не переключается этими кнопками, пока висит вопрос. Делается так же, как в MConfig+ (перезапуск сервиса кнопок), и возвращается, когда вопрос уходит.</string>
+    <string name="settings_mute_media_hint">Музыка продолжает играть, но не переключается этими кнопками, пока висит вопрос. Root не нужен: на это время приложение забирает медиакнопки у плеера.</string>
     <string name="settings_check_root">Проверить root-доступ</string>
     <string name="settings_check_root_running">Проверяю… если на экране спросят, разрешите отладку.</string>
     <string name="settings_check_root_ok">Root через ADB работает.</string>
     <string name="settings_check_root_failed">Root недоступен: %1$s</string>
     <string name="settings_test_popup">Показать тестовый вопрос</string>
-    <string name="popup_mute_debug">Кнопки музыки: %1$s</string>
+    <string name="popup_mute_debug">Не дошло до музыки: %1$s</string>
     <string name="settings_probe_mute">Показать состояние сервиса кнопок (диагностика)</string>
     <string name="popup_key_debug">Руль: %1$s (%2$s)</string>
 
@@ -180,6 +180,8 @@
     <string name="car_diag_root_media_log">Root: лог сервиса кнопок и медиацентра (жми ⏭ с музыкой)</string>
     <string name="car_diag_root_media_session">Root: кто получает медиакнопки (dumpsys)</string>
     <string name="car_diag_root_media_strings">Root: media в коде сервиса кнопок</string>
+    <string name="car_diag_root_inputimpl_pid">Root: кто пишет кнопки (процессы + InputImpl с pid)</string>
+    <string name="car_diag_intercept_media">ECarX: перехватить только ⏮ ⏭ ⏯ (потом жми их с музыкой)</string>
     <string name="car_diag_root_stop">Root: остановить</string>
     <string name="car_diag_copied">Отчёт скопирован</string>
     <string name="car_diag_share">Отправить отчёт</string>
