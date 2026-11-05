@@ -133,7 +133,7 @@
     <string name="popup_nearby_header">Also in range:</string>
     <string name="popup_close_title_window">Close barrier %s?</string>
     <string name="settings_title">Settings</string>
-    <string name="settings_cluster_popup">Popup on the driver's screen</string>
+    <string name="settings_cluster_popup">Popup on the driver\'s screen</string>
     <string name="settings_cluster_popup_hint">The question appears on the instrument cluster, under the navigation hint, instead of the head unit. If the cluster display is missing, it shows on the head unit as before.</string>
     <string name="settings_cluster_display">Display #%1$d (%2$d×%3$d)</string>
     <string name="settings_wheel_keys">Answer with the wheel ⏮ ⏭ ⏯</string>
