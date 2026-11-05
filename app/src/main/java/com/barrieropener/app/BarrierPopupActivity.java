@@ -70,29 +70,16 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private View[] answers;
     /** Index into {@link #answers} the wheel has selected. */
     private int selectedAnswer;
-    private WheelKeys wheelKeys;
-    /** The route that works on a Monjaro; {@link #wheelKeys} covers other ECarX units. */
-    private OneOsKeys oneOsKeys;
-    /** The cluster joystick on a Monjaro: broadcast by the ECarX input service. */
-    private DimKeyBroadcasts dimKeys;
     /** ⏮ ⏭ ⏯ on a Monjaro, read as root; only with the settings switch on. */
     private MonjaroWheel monjaroWheel;
     /** Holds the media keys away from the player while the wheel answers. */
     private MediaKeyCatcher mediaKeys;
     /** The same question on the driver's screen, answered with the wheel. */
     private ClusterPrompt clusterPrompt;
-    /** Diagnostic build only: shows the last wheel key, see {@link #reportKey}. */
-    private TextView keyDebugText;
 
     /** Intent extra: "close" puts the popup in closing mode; anything else means opening. */
     public static final String EXTRA_MODE = "popup_mode";
     public static final String MODE_CLOSE = "close";
-    /**
-     * Intent extra: a question from the diagnostics screen, put on another display to see whether
-     * it shows. Names no real barrier, so it must neither trigger anything nor offer the
-     * neighbours' open buttons from live location.
-     */
-    public static final String EXTRA_TEST = "popup_test";
 
     private String barrierName;
     private boolean closeMode;
@@ -136,9 +123,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         initViews();
         initSoundPool();
         bindFromIntent();
-        if (!getIntent().getBooleanExtra(EXTRA_TEST, false)) {
-            startLocationTracking();
-        }
+        startLocationTracking();
     }
 
     @Override
@@ -240,39 +225,27 @@ public class BarrierPopupActivity extends AppCompatActivity {
         btnWait.setOnClickListener(v -> cancelAutoDismiss());
         btnWait.setEnabled(true);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_blue_background));
-        keyDebugText = findViewById(R.id.textKeyDebug);
 
         answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo), btnWait};
         clusterPrompt = new ClusterPrompt(this);
-        clusterPrompt.setKeyListener((code, pressed) -> onInterceptedKey(code, pressed, "cluster"));
         renderSelection();
-        wheelKeys = new WheelKeys(this);
-        oneOsKeys = new OneOsKeys(this);
-        dimKeys = new DimKeyBroadcasts(this);
         monjaroWheel = new MonjaroWheel(this);
         mediaKeys = new MediaKeyCatcher(this);
         if (AppSettings.wheelKeys(this)) {
             // For the popup's whole life, not per resume: the root log stream takes a second to
             // connect, and a popup flickering through pause/resume must not reopen it each time.
-            monjaroWheel.start((code, pressed) -> onInterceptedKey(code, pressed, "wheel"), false);
+            monjaroWheel.start(this::onWheelKey);
             if (AppSettings.muteMedia(this)) {
                 // The keys themselves are read from the log above; this only keeps the player
-                // from also acting on them. Diagnostic build: say so when one is held back.
-                mediaKeys.start((code, pressed) -> {
-                    if (pressed) {
-                        String line = getString(R.string.popup_mute_debug,
-                                WheelKeys.describeKey(code));
-                        keyDebugText.setText(line);
-                        clusterPrompt.setStatus(line);
-                    }
-                });
+                // from also acting on them.
+                mediaKeys.start(null);
             }
         }
     }
 
     /**
      * Wheel keys that arrive as ordinary key events — units whose wheel is wired as a d-pad.
-     * Geely units do not deliver them this way; see {@link WheelKeys} for the vendor route.
+     * A Monjaro does not deliver them this way; see {@link MonjaroWheel}.
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -283,25 +256,15 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // Act on the press only, and only on its first event: a held key auto-repeats, and a
         // repeated "confirm" is exactly the double impulse a sliding gate reads as "stop".
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-            reportKey(code, "android");
             onWheelAction(WheelNavigator.actionFor(code));
         }
         return true;
     }
 
-    private void onVendorKey(int code, boolean pressed) {
-        onInterceptedKey(code, pressed, "ecarx");
-    }
-
-    private void onOneOsKey(int code, boolean pressed) {
-        onInterceptedKey(code, pressed, "oneos");
-    }
-
-    private void onInterceptedKey(int code, boolean pressed, String source) {
+    private void onWheelKey(int code, boolean pressed) {
         if (!pressed || isFinishing()) {
             return;
         }
-        reportKey(code, source);
         onWheelAction(WheelNavigator.actionFor(code));
     }
 
@@ -343,12 +306,6 @@ public class BarrierPopupActivity extends AppCompatActivity {
             enabled[i] = answers[i].isEnabled();
         }
         return enabled;
-    }
-
-    /** Diagnostic build only: the driver has no adb, so the code the wheel sent goes on screen. */
-    private void reportKey(int code, String source) {
-        keyDebugText.setText(getString(R.string.popup_key_debug,
-                WheelKeys.describeKey(code), source));
     }
 
     private void getIntentData() {
@@ -548,24 +505,10 @@ public class BarrierPopupActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         gatePoller.start();
-        // Held only while the question is in front of the driver: interception takes these keys
-        // away from the cluster menu and everything else until it is abandoned.
-        wheelKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onVendorKey);
-        oneOsKeys.start(WheelNavigator.INTERCEPTED_KEYS, this::onOneOsKey);
-        dimKeys.start((action, description) -> {
-            if (action == WheelNavigator.Action.NONE || isFinishing()) {
-                return;
-            }
-            keyDebugText.setText(getString(R.string.popup_key_debug, description, "dim"));
-            onWheelAction(action);
-        });
     }
 
     @Override
     protected void onPause() {
-        wheelKeys.stop();
-        oneOsKeys.stop();
-        dimKeys.stop();
         gatePoller.stop();
         super.onPause();
     }
@@ -628,7 +571,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     private void confirmAction() {
         if (primaryBarrier == null) {
-            // A test question, or a barrier deleted while the popup was up: nothing to trigger.
+            // A barrier deleted while the popup was up: nothing to trigger.
             dismissPopup();
             return;
         }

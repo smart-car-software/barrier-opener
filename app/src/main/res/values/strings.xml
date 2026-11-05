@@ -139,14 +139,9 @@
     <string name="settings_wheel_keys_hint">⏮ / ⏭ choose, ⏯ presses. Needs root and adb over the network switched on (as for MConfig+); the first time the unit asks to allow debugging.</string>
     <string name="settings_mute_media">Keep those keys from controlling music while asking</string>
     <string name="settings_mute_media_hint">The music keeps playing but ignores these keys while the question is up. No root needed: for that time the app briefly takes the media keys from the player.</string>
-    <string name="settings_check_root">Check root access</string>
     <string name="settings_check_root_running">Checking… allow debugging on the screen if asked.</string>
     <string name="settings_check_root_ok">Root through adb works.</string>
     <string name="settings_check_root_failed">No root: %1$s</string>
-    <string name="settings_test_popup">Show a test question</string>
-    <string name="popup_mute_debug">Kept from the music: %1$s</string>
-    <string name="settings_probe_mute">Show the key service state (diagnostics)</string>
-    <string name="popup_key_debug">Wheel: %1$s (%2$s)</string>
 
     <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->
     <string name="car_diag_title">Wheel &amp; cluster</string>
@@ -158,7 +153,6 @@
     <string name="car_diag_root_inputimpl">Wheel key log (root through adb)</string>
     <string name="car_diag_copied">Report copied</string>
     <string name="car_diag_share">Share report</string>
-    <string name="car_diag_test_barrier">Test</string>
 
     <!-- Location Service -->
     <string name="location_timeout">Could not get location: timeout</string>

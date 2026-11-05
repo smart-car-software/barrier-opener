@@ -23,9 +23,9 @@ package com.barrieropener.app;
  * the mapping is under test — the codes are what a real wheel turned out to send, and a mistake
  * here means the driver opening a gate they meant to wave away.
  *
- * <p>Codes are matched whether they come as an Android {@code KeyEvent} or through the ECarX
- * interception: the vendor SDK reuses Android's numbers for the keys Android has, and adds its own
- * ({@code 300001…}) for the ones it doesn't.
+ * <p>Codes are matched whether they come as an Android {@code KeyEvent} or out of the ECarX input
+ * library's log: the vendor reuses Android's numbers for the keys Android has, and adds its own
+ * ({@code 200085…}, {@code 300001…}) for the ones it doesn't.
  */
 public final class WheelNavigator {
 
@@ -53,19 +53,6 @@ public final class WheelNavigator {
     static final int ECARX_MEDIA_PREVIOUS = 200088;
     static final int ECARX_MEDIA_NEXT = 200087;
     static final int ECARX_MEDIA_PLAY_PAUSE = 200085;
-
-    /**
-     * What the popup asks the vendor SDK to hand over while it is on screen. Deliberately not
-     * media or volume: taking those away from the driver for half a minute to answer a question
-     * they can also answer by touch would be a poor trade.
-     */
-    public static final int[] INTERCEPTED_KEYS = {
-            KEYCODE_DPAD_UP, KEYCODE_DPAD_DOWN, KEYCODE_DPAD_LEFT, KEYCODE_DPAD_RIGHT,
-            KEYCODE_DPAD_CENTER, KEYCODE_ENTER, KEYCODE_NUMPAD_ENTER,
-            KEYCODE_SYSTEM_NAVIGATION_UP, KEYCODE_SYSTEM_NAVIGATION_DOWN,
-            KEYCODE_SYSTEM_NAVIGATION_LEFT, KEYCODE_SYSTEM_NAVIGATION_RIGHT,
-            ECARX_DMSM_LEFT, ECARX_DMSM_RIGHT, ECARX_DMSM_CENTER,
-    };
 
     private WheelNavigator() {
     }
@@ -95,25 +82,6 @@ public final class WheelNavigator {
             default:
                 return Action.NONE;
         }
-    }
-
-    // The cluster joystick on a Monjaro, as broadcast by the ECarX input service.
-    static final String BROADCAST_DIM_SCROLL_UP = "ecarx.intent.action.ECARX_KEY_DIMSCROLLUP_EVENT";
-    static final String BROADCAST_DIM_SCROLL_DOWN = "ecarx.intent.action.ECARX_KEY_DIMSCROLLDOWN_EVENT";
-    static final String BROADCAST_DIM_CONFIRM = "ecarx.intent.action.ECARX_KEY_DIMCONFIRM_EVENT";
-
-    /** The answer's three choices sit in a row, so "up" is towards Yes and "down" towards Wait. */
-    public static Action actionForBroadcast(String action) {
-        if (BROADCAST_DIM_SCROLL_UP.equals(action)) {
-            return Action.PREVIOUS;
-        }
-        if (BROADCAST_DIM_SCROLL_DOWN.equals(action)) {
-            return Action.NEXT;
-        }
-        if (BROADCAST_DIM_CONFIRM.equals(action)) {
-            return Action.CONFIRM;
-        }
-        return Action.NONE;
     }
 
     /**

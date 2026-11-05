@@ -18,10 +18,8 @@
 package com.barrieropener.app;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.Gravity;
-import android.view.KeyEvent;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
 import android.view.LayoutInflater;
@@ -30,19 +28,16 @@ import android.view.WindowManager;
 import android.widget.TextView;
 
 /**
- * A copy of the popup's question on the driver's screen. It mirrors the popup rather than
- * replacing it: the cluster has no touch, so the head-unit popup stays where a passenger can tap
- * it, and the copy is what the driver reads and answers with the wheel.
+ * The popup's question on the driver's screen. Once it is up the head-unit popup hides itself
+ * (see {@code BarrierPopupActivity.hideOnHeadUnit}) and keeps only the logic: the timer, the
+ * sound, the wheel keys. Yes / No only, and no timer — the driver answers with the wheel.
  *
- * <p>Drawn as an overlay window on the chosen display. On a Monjaro that is what works: launching
- * an activity there instead makes the system ask "open this app on the current screen?" every
- * time. Which display is the cluster is chosen once from the diagnostics screen — every secondary
- * display on that unit calls itself "HDMI screen", so there is nothing reliable to guess from.
+ * <p>Drawn as an overlay window on the cluster display. On a Monjaro that is what works:
+ * launching an activity there instead makes the system ask "open this app on the current
+ * screen?" every time, and the cluster has no touch to answer it with.
  */
 final class ClusterPrompt {
     private static final String TAG = "ClusterPrompt";
-    private static final String PREFS = "cluster_prompt";
-    private static final String KEY_DISPLAY = "display_id";
     static final int NONE = -1;
 
     /**
@@ -58,7 +53,6 @@ final class ClusterPrompt {
     private WindowManager wm;
     private View card;
     private View[] answers;
-    private WheelKeys.Listener keyListener;
 
     ClusterPrompt(Context context) {
         this.context = context;
@@ -67,24 +61,6 @@ final class ClusterPrompt {
     /** The display to use, or {@link #NONE} while the settings switch is off. */
     static int chosenDisplay(Context context) {
         return AppSettings.clusterPopup(context) ? AppSettings.CLUSTER_DISPLAY : NONE;
-    }
-
-    /** Diagnostics' shortcut: switch the feature on (the display is always the cluster's). */
-    static void chooseDisplay(Context context, int displayId) {
-        AppSettings.setClusterPopup(context, true);
-    }
-
-    private static SharedPreferences prefs(Context context) {
-        return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-    }
-
-    /**
-     * Wheel keys that reach the cluster display. Its joystick drives the cluster's own menu — an
-     * app on that display — so the keys go to whichever window there has focus; the card takes
-     * focus while it is up and hands them over here.
-     */
-    void setKeyListener(WheelKeys.Listener listener) {
-        this.keyListener = listener;
     }
 
     /** Shows (or re-titles) the copy; quietly does nothing without a chosen, present display. */
@@ -97,14 +73,9 @@ final class ClusterPrompt {
         if (id == NONE) {
             return;
         }
-        Display display = null;
-        for (Display d : ClusterDisplay.secondaryDisplays(context)) {
-            if (d.getDisplayId() == id) {
-                display = d;
-            }
-        }
+        Display display = ClusterDisplay.find(context, id);
         if (display == null) {
-            return; // The cluster is not up yet, or the choice was made on another unit.
+            return; // The cluster is not up yet, or this is not a Monjaro.
         }
         try {
             View v = LayoutInflater.from(new ContextThemeWrapper(
@@ -115,37 +86,14 @@ final class ClusterPrompt {
             // "Wait" would mean nothing — it stays until answered.
             v.findViewById(R.id.clusterWait).setVisibility(View.GONE);
             answers = new View[]{v.findViewById(R.id.clusterYes), v.findViewById(R.id.clusterNo)};
-            v.setFocusable(true);
-            v.setFocusableInTouchMode(true);
-            v.setOnKeyListener((view, keyCode, event) -> {
-                if (WheelNavigator.actionFor(keyCode) == WheelNavigator.Action.NONE) {
-                    return false; // Not ours: let the cluster have it.
-                }
-                WheelKeys.Listener l = keyListener;
-                if (l != null && event.getRepeatCount() == 0) {
-                    l.onWheelKey(keyCode, event.getAction() == KeyEvent.ACTION_DOWN);
-                }
-                return true;
-            });
             wm = ClusterDisplay.showOverlay(context, display, v,
-                    Gravity.TOP | Gravity.CENTER_HORIZONTAL, CARD_WIDTH_PX, CARD_TOP_PX, true);
-            v.requestFocus();
+                    Gravity.TOP | Gravity.CENTER_HORIZONTAL, CARD_WIDTH_PX, CARD_TOP_PX);
             card = v;
         } catch (RuntimeException e) {
             // No overlay permission, or a firmware that refuses windows there: the head-unit
             // popup still asks the question.
             Log.w(TAG, "Cluster copy not shown", e);
         }
-    }
-
-    /** Diagnostic build only: a small status line under the answers. */
-    void setStatus(String text) {
-        if (card == null) {
-            return;
-        }
-        TextView status = card.findViewById(R.id.clusterStatus);
-        status.setVisibility(View.VISIBLE);
-        status.setText(text);
     }
 
     boolean isShowing() {

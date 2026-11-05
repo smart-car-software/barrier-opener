@@ -17,7 +17,6 @@
 
 package com.barrieropener.app;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.TextView;
 
@@ -30,6 +29,7 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 public class SettingsActivity extends AppCompatActivity {
 
     private RootStream check;
+    private TextView status;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,48 +47,43 @@ public class SettingsActivity extends AppCompatActivity {
         wheel.setChecked(AppSettings.wheelKeys(this));
         mute.setChecked(AppSettings.muteMedia(this));
         mute.setEnabled(wheel.isChecked());
+        status = findViewById(R.id.textWheelStatus);
+        check = new RootStream(this);
         wheel.setOnCheckedChangeListener((b, on) -> {
             AppSettings.setWheelKeys(this, on);
             mute.setEnabled(on);
+            if (on) {
+                checkRoot();
+            } else {
+                check.stop();
+                status.setText("");
+            }
         });
         mute.setOnCheckedChangeListener((b, on) -> AppSettings.setMuteMedia(this, on));
+        if (wheel.isChecked()) {
+            checkRoot();
+        }
+    }
 
-        // The real popup with a made-up barrier, so the switches above can be tried without
-        // driving up to a gate. EXTRA_TEST: nothing is triggered, whatever is answered.
-        findViewById(R.id.btnTestPopup).setOnClickListener(v -> startActivity(
-                new Intent(this, BarrierPopupActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        .putExtra("barrier_name", getString(R.string.car_diag_test_barrier))
-                        .putExtra("barrier_id", -1L)
-                        .putExtra(BarrierPopupActivity.EXTRA_TEST, true)));
-
-        TextView probe = findViewById(R.id.textProbeMute);
-        findViewById(R.id.btnProbeMute).setOnClickListener(v -> {
-            probe.setText(R.string.settings_check_root_running);
-            StringBuilder out = new StringBuilder();
-            check.start(MonjaroWheel.PROBE, null, line -> {
-                if (line == null) {
-                    probe.setText(out.toString().trim());
-                } else {
-                    out.append(line).append('\n');
-                }
-            });
-        });
-
-        TextView status = findViewById(R.id.textWheelStatus);
-        check = new RootStream(this);
-        findViewById(R.id.btnCheckWheel).setOnClickListener(v -> {
-            status.setText(R.string.settings_check_root_running);
-            StringBuilder out = new StringBuilder();
-            check.start("id -un", null, line -> {
-                if (line == null) {
-                    boolean root = out.toString().contains("\nroot") || out.toString().startsWith("root");
-                    status.setText(root ? getString(R.string.settings_check_root_ok)
-                            : getString(R.string.settings_check_root_failed, out.toString().trim()));
-                } else {
-                    out.append(line).append('\n');
-                }
-            });
+    /**
+     * Checked by itself whenever the wheel keys are on: the first connection is also when the
+     * unit asks to allow debugging for this app, which is better asked while the driver is here,
+     * at the settings, than the first time a gate comes into range.
+     */
+    private void checkRoot() {
+        status.setText(R.string.settings_check_root_running);
+        StringBuilder out = new StringBuilder();
+        check.start("id -un", null, line -> {
+            if (!AppSettings.wheelKeys(this)) {
+                return; // Switched off meanwhile: the stopped check's ending says nothing.
+            }
+            if (line == null) {
+                boolean root = out.toString().contains("\nroot") || out.toString().startsWith("root");
+                status.setText(root ? getString(R.string.settings_check_root_ok)
+                        : getString(R.string.settings_check_root_failed, out.toString().trim()));
+            } else {
+                out.append(line).append('\n');
+            }
         });
     }
 

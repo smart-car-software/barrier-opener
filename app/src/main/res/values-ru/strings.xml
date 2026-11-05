@@ -147,14 +147,9 @@
     <string name="settings_wheel_keys_hint">⏮ / ⏭ — выбор, ⏯ — нажать. Нужны root и включённый ADB по сети (как для MConfig+); в первый раз головное устройство спросит, разрешить ли отладку.</string>
     <string name="settings_mute_media">Не управлять музыкой этими кнопками, пока висит вопрос</string>
     <string name="settings_mute_media_hint">Музыка продолжает играть, но не переключается этими кнопками, пока висит вопрос. Root не нужен: на это время приложение забирает медиакнопки у плеера.</string>
-    <string name="settings_check_root">Проверить root-доступ</string>
     <string name="settings_check_root_running">Проверяю… если на экране спросят, разрешите отладку.</string>
     <string name="settings_check_root_ok">Root через ADB работает.</string>
     <string name="settings_check_root_failed">Root недоступен: %1$s</string>
-    <string name="settings_test_popup">Показать тестовый вопрос</string>
-    <string name="popup_mute_debug">Не дошло до музыки: %1$s</string>
-    <string name="settings_probe_mute">Показать состояние сервиса кнопок (диагностика)</string>
-    <string name="popup_key_debug">Руль: %1$s (%2$s)</string>
 
     <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->
     <string name="car_diag_title">Руль и приборка</string>
@@ -166,7 +161,6 @@
     <string name="car_diag_root_inputimpl">Лог кнопок руля (root через ADB)</string>
     <string name="car_diag_copied">Отчёт скопирован</string>
     <string name="car_diag_share">Отправить отчёт</string>
-    <string name="car_diag_test_barrier">Тест</string>
 
     <!-- Add/Edit Barrier Screen -->
     <string name="barrier_type">Тип шлагбаума</string>

@@ -18,7 +18,6 @@
 package com.barrieropener.app;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 
 import org.junit.Test;
 
@@ -47,28 +46,6 @@ public class WheelNavigatorTest {
         for (int code : new int[]{87, 88, 24, 25, 85, 164}) {
             assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(code));
         }
-    }
-
-    @Test
-    public void everyInterceptedKeyMeansSomething() {
-        // Intercepting a key the popup then ignores would only take it away from the system.
-        for (int code : WheelNavigator.INTERCEPTED_KEYS) {
-            assertNotEquals(WheelNavigator.Action.NONE, WheelNavigator.actionFor(code));
-        }
-    }
-
-    @Test
-    public void clusterJoystickBroadcasts() {
-        assertEquals(WheelNavigator.Action.PREVIOUS, WheelNavigator.actionForBroadcast(
-                "ecarx.intent.action.ECARX_KEY_DIMSCROLLUP_EVENT"));
-        assertEquals(WheelNavigator.Action.NEXT, WheelNavigator.actionForBroadcast(
-                "ecarx.intent.action.ECARX_KEY_DIMSCROLLDOWN_EVENT"));
-        assertEquals(WheelNavigator.Action.CONFIRM, WheelNavigator.actionForBroadcast(
-                "ecarx.intent.action.ECARX_KEY_DIMCONFIRM_EVENT"));
-        // Source / voice keys are logged by diagnostics but never answer the question.
-        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionForBroadcast(
-                "ecarx.intent.action.ECARX_KEY_RSRC_EVENT"));
-        assertEquals(WheelNavigator.Action.NONE, WheelNavigator.actionForBroadcast(null));
     }
 
     @Test

@@ -90,12 +90,6 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
-            <Button
-                android:id="@+id/btnCheckWheel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/settings_check_root" />
 
             <TextView
                 android:id="@+id/textWheelStatus"
@@ -105,28 +99,7 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
-            <Button
-                android:id="@+id/btnProbeMute"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/settings_probe_mute" />
 
-            <TextView
-                android:id="@+id/textProbeMute"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textColor="@color/text_secondary"
-                android:textIsSelectable="true"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnTestPopup"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/settings_test_popup" />
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

@@ -28,20 +28,26 @@ import java.util.concurrent.Executors;
 
 /**
  * Answering the popup with the Monjaro's right-hand media keys (⏮ ⏭ ⏯), the only wheel keys that
- * car lets Android see — and only as root: no key event, broadcast or vendor listener carries
- * them to an app, but the ECarX input library logs every press ({@code InputImpl}), and that log
- * is what the community tools (MConfig+) follow. Root comes through the unit's own adb daemon
- * ({@link LocalAdb}); on a unit without it nothing here happens and the popup is answered by touch.
+ * car lets Android see — and only as root. Every unprivileged route was tried on the car and none
+ * carries them to an app: no key event, no input-service broadcast, neither the ECarX AdaptAPI
+ * interception (accepted, never calls back) nor Geely OneOS (absent). But the ECarX input library
+ * logs each press ({@code InputImpl}: "onKeyPressed cookie=0 keyCode=200087"), and following that
+ * log is what the community tools (MConfig+) do. Root comes through the unit's own adb daemon
+ * ({@link LocalAdb}); on a unit without it nothing happens and the popup is answered by touch.
+ * The left joystick is not in that log at all — it belongs to the cluster.
  *
- * <p>While the question is up the keys must not also skip tracks, so the media buttons are muted
- * the way MConfig+ mutes them: the input service's compiled code names the MEDIA_BUTTON intent it
- * sends, a same-length rename to IEDIA_BUTTON makes it send nothing anyone listens to, and the
- * service is restarted to load it. Undone when the question goes. A flag committed before the
- * patch lets {@link #restoreIfLeftMuted} undo it after a crash, and a unit the driver has muted
- * themselves (MConfig+'s own switch) is left exactly as it is.
+ * <p>Keeping those keys from also skipping the track is {@link MediaKeyCatcher}'s job, not this
+ * class's.
  */
 final class MonjaroWheel {
     private static final String TAG = "MonjaroWheel";
+
+    /**
+     * Test builds 0.9.7–0.9.9 muted the media keys by patching the input service's compiled code
+     * (as MConfig+ does) and restoring it afterwards. That did not even work — the player is
+     * reached through the media-session dispatch, not that broadcast — and is gone; but a unit
+     * one of those builds left patched (killed mid-question) is still put right on start-up.
+     */
     private static final String VDEX =
             "/data/dalvik-cache/arm64/system@app@XSFInputService@XSFInputService.apk@classes.vdex";
     private static final String MEDIA = "android.intent.action.MEDIA_BUTTON";
@@ -50,7 +56,6 @@ final class MonjaroWheel {
     private static final String PREFS = "monjaro_wheel";
     private static final String KEY_MUTED_BY_US = "muted_by_us";
 
-    /** Mute and unmute in order, never overlapping, across every popup and the restore. */
     private static final ExecutorService ROOT = Executors.newSingleThreadExecutor();
 
     private final Context context;
@@ -62,32 +67,12 @@ final class MonjaroWheel {
         this.context = context.getApplicationContext();
     }
 
-    /** Starts listening (and muting the player); harmless on units without adb or the service. */
-    /** What became of the mute, for the diagnostic line under the popup. Main thread. */
-    interface MuteReport {
-        void onMuteReport(String status);
-    }
-
-    private MuteReport muteReport;
-
-    void setMuteReport(MuteReport report) {
-        this.muteReport = report;
-    }
-
-    void start(WheelKeys.Listener listener, boolean muteMedia) {
+    /** Starts following the key log; harmless on units without adb or the service. */
+    void start(WheelKeys.Listener listener) {
         if (running) {
             return;
         }
         running = true;
-        if (muteMedia) {
-            ROOT.execute(() -> {
-                String status = mute(context);
-                MuteReport r = muteReport;
-                if (r != null) {
-                    main.post(() -> r.onMuteReport(status));
-                }
-            });
-        }
         Thread reader = new Thread(() -> {
             StringBuilder pending = new StringBuilder();
             try (LocalAdb adb = LocalAdb.connect(context, new StringBuilder())) {
@@ -95,6 +80,7 @@ final class MonjaroWheel {
                     return;
                 }
                 logStream = adb;
+                // -T 1: from now on, not the presses already in the log buffer.
                 adb.shell("su 0 sh -c 'logcat -b main -v raw -T 1 InputImpl:V *:S'", text -> {
                     pending.append(text);
                     int nl;
@@ -125,70 +111,25 @@ final class MonjaroWheel {
         if (adb != null) {
             adb.close();
         }
-        ROOT.execute(() -> unmute(context));
     }
 
-    /** From the service's start: undo a mute a crashed popup left behind. */
+    /** From the service's start: undo the input-service patch a 0.9.7–0.9.9 test build left. */
     static void restoreIfLeftMuted(Context context) {
         Context app = context.getApplicationContext();
-        if (prefs(app).getBoolean(KEY_MUTED_BY_US, false)) {
-            ROOT.execute(() -> unmute(app));
-        }
-    }
-
-    private static String mute(Context context) {
-        try {
-            String muted = run(context, "test -f " + VDEX + " && grep -c " + IEDIA + " " + VDEX);
-            String plain = run(context, "test -f " + VDEX + " && grep -c " + MEDIA + " " + VDEX);
-            // Only a unit in the stock state is touched: already muted (by the driver, through
-            // MConfig+) or patched in some way we do not know — leave it alone.
-            if (!"0".equals(muted.trim()) || "0".equals(plain.trim()) || plain.trim().isEmpty()) {
-                String state = "not muted: iedia=" + muted.trim() + " media=" + plain.trim();
-                Log.i(TAG, state);
-                return state;
-            }
-            prefs(context).edit().putBoolean(KEY_MUTED_BY_US, true).commit();
-            run(context, "sed -i s#" + MEDIA + "#" + IEDIA + "#g " + VDEX + " && " + RESTART);
-            String after = run(context, "grep -c " + IEDIA + " " + VDEX).trim();
-            Log.i(TAG, "Media keys muted, iedia=" + after);
-            return "muted, iedia=" + after;
-        } catch (Exception e) {
-            Log.w(TAG, "Mute failed", e);
-            return "mute failed: " + WheelKeys.rootCause(e);
-        }
-    }
-
-    private static void unmute(Context context) {
-        if (!prefs(context).getBoolean(KEY_MUTED_BY_US, false)) {
+        SharedPreferences prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (!prefs.getBoolean(KEY_MUTED_BY_US, false)) {
             return;
         }
-        try {
-            run(context, "sed -i s#" + IEDIA + "#" + MEDIA + "#g " + VDEX + " && " + RESTART);
-            prefs(context).edit().putBoolean(KEY_MUTED_BY_US, false).commit();
-            Log.i(TAG, "Media keys restored");
-        } catch (Exception e) {
-            // The flag stays set: the next popup's end or the next service start tries again.
-            Log.w(TAG, "Unmute failed", e);
-        }
-    }
-
-    /** One root command through adb; its whole output. */
-    private static String run(Context context, String command) throws Exception {
-        StringBuilder out = new StringBuilder();
-        try (LocalAdb adb = LocalAdb.connect(context, new StringBuilder())) {
-            adb.shell("su 0 sh -c '" + command + "'", out::append);
-        }
-        return out.toString();
-    }
-
-    /** Where the input service's code actually is on this unit and what it says, for settings. */
-    static final String PROBE = "ls -l /data/dalvik-cache/arm64/ | grep -i -e xsf -e input;"
-            + " ls -lR /system/app/XSFInputService 2>&1 | head -20;"
-            + " echo media=$(grep -c " + MEDIA + " " + VDEX + " 2>&1)"
-            + " iedia=$(grep -c " + IEDIA + " " + VDEX + " 2>&1);"
-            + " ps -A | grep -i inputservice";
-
-    private static SharedPreferences prefs(Context context) {
-        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        ROOT.execute(() -> {
+            try (LocalAdb adb = LocalAdb.connect(app, new StringBuilder())) {
+                adb.shell("su 0 sh -c 'sed -i s#" + IEDIA + "#" + MEDIA + "#g " + VDEX
+                        + " && " + RESTART + "'", text -> { });
+                prefs.edit().putBoolean(KEY_MUTED_BY_US, false).commit();
+                Log.i(TAG, "Input service restored");
+            } catch (Exception e) {
+                // The flag stays set: the next start tries again.
+                Log.w(TAG, "Restore failed", e);
+            }
+        });
     }
 }
