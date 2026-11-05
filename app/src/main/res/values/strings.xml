@@ -169,6 +169,9 @@
     <string name="car_diag_root_logcat">Root: whole log, lines with key / dim</string>
     <string name="car_diag_root_tcpdump">Root: vehicle network packets (as MConfig)</string>
     <string name="car_diag_root_tcpdump_all">Root: all packets from port 50500 (400)</string>
+    <string name="car_diag_root_media_log">Root: key service + media centre log (press ⏭ with music on)</string>
+    <string name="car_diag_root_media_session">Root: who holds the media keys (dumpsys)</string>
+    <string name="car_diag_root_media_strings">Root: media in the key service code</string>
     <string name="car_diag_root_stop">Root: stop</string>
     <string name="car_diag_copied">Report copied</string>
     <string name="car_diag_share">Share report</string>

@@ -157,6 +157,20 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
             mediaKeys.stop();
             appendReport("media session: off");
         });
+        // Where the music gets the wheel from, when not from MEDIA_BUTTON: the key service's and
+        // the media centre's own log lines around a press, who holds the media keys, and what the
+        // key service's code says about media.
+        addAction(actions, getString(R.string.car_diag_root_media_log), () -> startRoot(
+                "I=$(pidof ecarx.xsf.inputservice); M=$(pidof ecarx.xsf.mediacenter);"
+                        + " echo inputservice=$I mediacenter=$M;"
+                        + " logcat -b all -v brief -T 1 -e \"\\( *($I|$M)\\)\"",
+                null));
+        addAction(actions, getString(R.string.car_diag_root_media_session), () -> startRoot(
+                "dumpsys media_session | head -120; dumpsys activity broadcasts | grep -i -e media -e ecarx | head -40",
+                null));
+        addAction(actions, getString(R.string.car_diag_root_media_strings), () -> startRoot(
+                "grep -a -o -E \"[A-Za-z0-9_.$/]*([Mm]edia|MEDIA|[Kk]eyEvent|dispatch)[A-Za-z0-9_.$/]*\" /data/dalvik-cache/arm64/system@app@XSFInputService@XSFInputService.apk@classes.vdex | sort -u | head -300",
+                null));
         addAction(actions, getString(R.string.car_diag_root_stop), () -> {
             rootStream.stop();
             appendReport("root: stopped");

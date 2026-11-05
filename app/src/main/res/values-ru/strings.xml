@@ -177,6 +177,9 @@
     <string name="car_diag_root_logcat">Root: весь лог, строки с key / dim</string>
     <string name="car_diag_root_tcpdump">Root: пакеты сети автомобиля (как MConfig)</string>
     <string name="car_diag_root_tcpdump_all">Root: все пакеты с порта 50500 (400 шт.)</string>
+    <string name="car_diag_root_media_log">Root: лог сервиса кнопок и медиацентра (жми ⏭ с музыкой)</string>
+    <string name="car_diag_root_media_session">Root: кто получает медиакнопки (dumpsys)</string>
+    <string name="car_diag_root_media_strings">Root: media в коде сервиса кнопок</string>
     <string name="car_diag_root_stop">Root: остановить</string>
     <string name="car_diag_copied">Отчёт скопирован</string>
     <string name="car_diag_share">Отправить отчёт</string>
