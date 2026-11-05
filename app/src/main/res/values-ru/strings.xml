@@ -152,6 +152,7 @@
     <string name="settings_check_root_running">Проверяю… если на экране спросят, разрешите отладку.</string>
     <string name="settings_check_root_ok">Root через ADB работает.</string>
     <string name="settings_check_root_failed">Root недоступен: %1$s</string>
+    <string name="settings_test_popup">Показать тестовый вопрос</string>
     <string name="popup_key_debug">Руль: %1$s (%2$s)</string>
 
     <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->

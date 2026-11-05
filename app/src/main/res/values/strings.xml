@@ -144,6 +144,7 @@
     <string name="settings_check_root_running">Checking… allow debugging on the screen if asked.</string>
     <string name="settings_check_root_ok">Root through adb works.</string>
     <string name="settings_check_root_failed">No root: %1$s</string>
+    <string name="settings_test_popup">Show a test question</string>
     <string name="popup_key_debug">Wheel: %1$s (%2$s)</string>
 
     <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->

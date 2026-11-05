@@ -17,6 +17,7 @@
 
 package com.barrieropener.app;
 
+import android.content.Intent;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.view.Display;
@@ -65,6 +66,15 @@ public class SettingsActivity extends AppCompatActivity {
             mute.setEnabled(on);
         });
         mute.setOnCheckedChangeListener((b, on) -> AppSettings.setMuteMedia(this, on));
+
+        // The real popup with a made-up barrier, so the switches above can be tried without
+        // driving up to a gate. EXTRA_TEST: nothing is triggered, whatever is answered.
+        findViewById(R.id.btnTestPopup).setOnClickListener(v -> startActivity(
+                new Intent(this, BarrierPopupActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra("barrier_name", getString(R.string.car_diag_test_barrier))
+                        .putExtra("barrier_id", -1L)
+                        .putExtra(BarrierPopupActivity.EXTRA_TEST, true)));
 
         TextView status = findViewById(R.id.textWheelStatus);
         check = new RootStream(this);
