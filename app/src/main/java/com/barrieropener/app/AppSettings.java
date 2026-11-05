@@ -28,10 +28,13 @@ import android.content.SharedPreferences;
 final class AppSettings {
     private static final String PREFS = "app_settings";
     private static final String KEY_CLUSTER = "cluster_popup";
-    private static final String KEY_CLUSTER_DISPLAY = "cluster_display";
     private static final String KEY_WHEEL = "wheel_keys";
     private static final String KEY_MUTE = "mute_media";
-    static final int NO_DISPLAY = -1;
+    /**
+     * The Monjaro's instrument cluster: display #2, the 1920x1080 one of its three "HDMI
+     * screens". Fixed rather than chosen — that is the car this feature is for.
+     */
+    static final int CLUSTER_DISPLAY = 2;
 
     private AppSettings() {
     }
@@ -47,14 +50,6 @@ final class AppSettings {
 
     static void setClusterPopup(Context c, boolean on) {
         prefs(c).edit().putBoolean(KEY_CLUSTER, on).apply();
-    }
-
-    static int clusterDisplay(Context c) {
-        return prefs(c).getInt(KEY_CLUSTER_DISPLAY, NO_DISPLAY);
-    }
-
-    static void setClusterDisplay(Context c, int displayId) {
-        prefs(c).edit().putInt(KEY_CLUSTER_DISPLAY, displayId).apply();
     }
 
     /** Answer with the wheel's ⏮ ⏭ ⏯, read as root through adb. */

@@ -66,12 +66,11 @@ final class ClusterPrompt {
 
     /** The display to use, or {@link #NONE} while the settings switch is off. */
     static int chosenDisplay(Context context) {
-        return AppSettings.clusterPopup(context) ? AppSettings.clusterDisplay(context) : NONE;
+        return AppSettings.clusterPopup(context) ? AppSettings.CLUSTER_DISPLAY : NONE;
     }
 
-    /** Diagnostics' shortcut: choose the display and switch the feature on. */
+    /** Diagnostics' shortcut: switch the feature on (the display is always the cluster's). */
     static void chooseDisplay(Context context, int displayId) {
-        AppSettings.setClusterDisplay(context, displayId);
         AppSettings.setClusterPopup(context, true);
     }
 

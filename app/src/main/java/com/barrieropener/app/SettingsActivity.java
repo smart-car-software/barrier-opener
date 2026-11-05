@@ -18,20 +18,13 @@
 package com.barrieropener.app;
 
 import android.content.Intent;
-import android.graphics.Point;
 import android.os.Bundle;
-import android.view.Display;
-import android.view.View;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.materialswitch.MaterialSwitch;
-
-import java.util.List;
 
 /** The app-wide switches in {@link AppSettings}: the driver's-screen popup and the wheel keys. */
 public class SettingsActivity extends AppCompatActivity {
@@ -46,15 +39,8 @@ public class SettingsActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         MaterialSwitch cluster = findViewById(R.id.switchClusterPopup);
-        RadioGroup displays = findViewById(R.id.groupClusterDisplay);
-        TextView noDisplay = findViewById(R.id.textClusterNoDisplay);
         cluster.setChecked(AppSettings.clusterPopup(this));
-        buildDisplayChoice(displays, noDisplay);
-        displays.setVisibility(cluster.isChecked() ? View.VISIBLE : View.GONE);
-        cluster.setOnCheckedChangeListener((b, on) -> {
-            AppSettings.setClusterPopup(this, on);
-            displays.setVisibility(on ? View.VISIBLE : View.GONE);
-        });
+        cluster.setOnCheckedChangeListener((b, on) -> AppSettings.setClusterPopup(this, on));
 
         MaterialSwitch wheel = findViewById(R.id.switchWheelKeys);
         MaterialSwitch mute = findViewById(R.id.switchMuteMedia);
@@ -104,34 +90,6 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             });
         });
-    }
-
-    /**
-     * Lists every display besides the head unit's own; on a Monjaro they all call themselves
-     * "HDMI screen", so each shows its id and size — the cluster is the 1920×1080 one.
-     */
-    private void buildDisplayChoice(RadioGroup group, TextView noDisplay) {
-        List<Display> list = ClusterDisplay.secondaryDisplays(this);
-        noDisplay.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
-        int chosen = AppSettings.clusterDisplay(this);
-        for (Display d : list) {
-            Point size = new Point();
-            d.getRealSize(size);
-            RadioButton rb = new RadioButton(this);
-            rb.setId(View.generateViewId());
-            rb.setText(getString(R.string.settings_cluster_display, d.getDisplayId(), size.x, size.y));
-            rb.setTextColor(getColor(R.color.text_primary));
-            int id = d.getDisplayId();
-            rb.setOnCheckedChangeListener((b, on) -> {
-                if (on) {
-                    AppSettings.setClusterDisplay(this, id);
-                }
-            });
-            group.addView(rb);
-            if (id == chosen) {
-                rb.setChecked(true);
-            }
-        }
     }
 
     @Override

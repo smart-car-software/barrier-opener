@@ -143,7 +143,6 @@
     <string name="settings_title">Настройки</string>
     <string name="settings_cluster_popup">Всплывашка на приборке</string>
     <string name="settings_cluster_popup_hint">Вопрос показывается на приборке, под подсказкой навигатора, а не на главном экране. Если дисплея приборки нет, всплывашка появится на главном экране, как раньше.</string>
-    <string name="settings_cluster_display">Дисплей #%1$d (%2$d×%3$d)</string>
     <string name="settings_wheel_keys">Отвечать кнопками руля ⏮ ⏭ ⏯</string>
     <string name="settings_wheel_keys_hint">⏮ / ⏭ — выбор, ⏯ — нажать. Нужны root и включённый ADB по сети (как для MConfig+); в первый раз головное устройство спросит, разрешить ли отладку.</string>
     <string name="settings_mute_media">Не управлять музыкой этими кнопками, пока висит вопрос</string>

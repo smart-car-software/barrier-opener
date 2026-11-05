@@ -56,22 +56,6 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
-            <RadioGroup
-                android:id="@+id/groupClusterDisplay"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="8dp" />
-
-            <TextView
-                android:id="@+id/textClusterNoDisplay"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/car_diag_no_displays"
-                android:textColor="@color/status_warning"
-                android:visibility="gone" />
-
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/switchWheelKeys"
                 android:layout_width="match_parent"
