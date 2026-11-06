@@ -171,7 +171,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // user pressed or restart the auto-dismiss out from under them.
         if (primaryChanged) {
             DebugLog.i(TAG, "Asking to " + (closeMode ? "close " : "open ") + barrierName
-                    + " (cluster " + onCluster + ", wheel " + AppSettings.wheelKeys(this) + ")");
+                    + " (on cluster " + onCluster + "; " + AppSettings.describe(this) + ")");
             resetWaitButton();
             // A fresh question starts on "Yes" — the answer the popup exists to offer.
             selectedAnswer = 0;

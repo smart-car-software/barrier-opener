@@ -52,7 +52,30 @@ final class AppSettings {
     }
 
     static void setClusterPopup(Context c, boolean on) {
-        prefs(c).edit().putBoolean(KEY_CLUSTER, on).apply();
+        set(c, KEY_CLUSTER, on);
+    }
+
+    /**
+     * Every change goes into the journal, with where it came from: a switch on the car once
+     * turned itself off, and nothing in the code explains it, so the next time it should show.
+     */
+    private static void set(Context c, String key, boolean on) {
+        StackTraceElement[] stack = new Throwable().getStackTrace();
+        StringBuilder from = new StringBuilder();
+        // A tap reads "… < CompoundButton.toggle < View.performClick", a restored screen
+        // "… < CompoundButton.onRestoreInstanceState".
+        for (int i = 2; i < Math.min(stack.length, 9); i++) {
+            from.append(i > 2 ? " < " : "").append(stack[i].getClassName()
+                    .replace("com.barrieropener.app.", "")).append('.').append(stack[i].getMethodName());
+        }
+        DebugLog.i("AppSettings", key + " = " + on + " (from " + from + ")");
+        prefs(c).edit().putBoolean(key, on).apply();
+    }
+
+    /** All the switches on one line, for the journal. */
+    static String describe(Context c) {
+        return "cluster " + clusterPopup(c) + ", wheel " + wheelKeys(c) + ", keep from music "
+                + muteMedia(c);
     }
 
     /** Answer with the wheel's ⏮ ⏭ ⏯, read as root through adb. */
@@ -61,7 +84,7 @@ final class AppSettings {
     }
 
     static void setWheelKeys(Context c, boolean on) {
-        prefs(c).edit().putBoolean(KEY_WHEEL, on).apply();
+        set(c, KEY_WHEEL, on);
     }
 
     /** While the question is up, keep those keys from also skipping tracks. */
@@ -70,7 +93,7 @@ final class AppSettings {
     }
 
     static void setMuteMedia(Context c, boolean on) {
-        prefs(c).edit().putBoolean(KEY_MUTE, on).apply();
+        set(c, KEY_MUTE, on);
     }
 
     /**

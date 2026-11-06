@@ -41,6 +41,8 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
         Toolbar toolbar = findViewById(R.id.settingsToolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
+        DebugLog.i("SettingsActivity", "Opened (" + AppSettings.describe(this)
+                + (savedInstanceState != null ? ", recreated" : "") + ")");
 
         MaterialSwitch cluster = findViewById(R.id.switchClusterPopup);
         cluster.setChecked(AppSettings.clusterPopup(this));
