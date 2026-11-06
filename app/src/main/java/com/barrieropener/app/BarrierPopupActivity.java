@@ -102,7 +102,10 @@ public class BarrierPopupActivity extends AppCompatActivity {
      */
     private static final long CLUSTER_GIVE_UP_MS = 5 * 60_000L;
     private final android.os.Handler clusterTimeout = new android.os.Handler(android.os.Looper.getMainLooper());
-    private final Runnable giveUp = this::dismissPopup;
+    private final Runnable giveUp = () -> {
+        DebugLog.i(TAG, "Cluster question gave up unanswered");
+        dismissPopup();
+    };
     private long primaryId = -1;
     private Barrier primaryBarrier;
     private long[] nearbyIds;
@@ -167,6 +170,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // suggested barrier actually changed. A same-primary redelivery must NOT undo a "Wait" the
         // user pressed or restart the auto-dismiss out from under them.
         if (primaryChanged) {
+            DebugLog.i(TAG, "Asking to " + (closeMode ? "close " : "open ") + barrierName
+                    + " (cluster " + onCluster + ", wheel " + AppSettings.wheelKeys(this) + ")");
             resetWaitButton();
             // A fresh question starts on "Yes" — the answer the popup exists to offer.
             selectedAnswer = 0;
@@ -234,7 +239,10 @@ public class BarrierPopupActivity extends AppCompatActivity {
         gateStateText = findViewById(R.id.textGateState);
 
         findViewById(R.id.btnYes).setOnClickListener(v -> confirmAction());
-        findViewById(R.id.btnNo).setOnClickListener(v -> dismissPopup());
+        findViewById(R.id.btnNo).setOnClickListener(v -> {
+            DebugLog.i(TAG, "Answered no");
+            dismissPopup();
+        });
         btnWait = findViewById(R.id.btnWait);
         btnWait.setOnClickListener(v -> cancelAutoDismiss());
         btnWait.setEnabled(true);
@@ -249,6 +257,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             // For the popup's whole life, not per resume: the root log stream takes a second to
             // connect, and a popup flickering through pause/resume must not reopen it each time.
             monjaroWheel.start(this::onWheelKey, connected -> {
+                DebugLog.i(TAG, connected ? "Wheel key log connected" : "Wheel key log ended");
                 wheelConnected = connected;
                 updateHeadUnitVisibility();
             });
@@ -257,9 +266,10 @@ public class BarrierPopupActivity extends AppCompatActivity {
                 // presses arrive: the key log above goes quiet for as long as this holds them.
                 mediaHeld = mediaKeys.start((code, pressed) -> {
                     if (pressed && !isFinishing()) {
-                        onWheelAction(WheelNavigator.actionForMediaKey(code));
+                        onWheelAction(WheelNavigator.actionForMediaKey(code), "media " + code);
                     }
                 });
+                DebugLog.i(TAG, "Media keys " + (mediaHeld ? "held" : "NOT held (silent track failed)"));
             }
         }
     }
@@ -277,7 +287,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // Act on the press only, and only on its first event: a held key auto-repeats, and a
         // repeated "confirm" is exactly the double impulse a sliding gate reads as "stop".
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-            onWheelAction(WheelNavigator.actionFor(code));
+            onWheelAction(WheelNavigator.actionFor(code), "key event " + code);
         }
         return true;
     }
@@ -286,17 +296,21 @@ public class BarrierPopupActivity extends AppCompatActivity {
         if (!pressed || isFinishing()) {
             return;
         }
-        onWheelAction(WheelNavigator.actionFor(code));
+        onWheelAction(WheelNavigator.actionFor(code), "key log " + code);
     }
 
-    private void onWheelAction(WheelNavigator.Action action) {
+    /** @param route where the press came from, for the journal */
+    private void onWheelAction(WheelNavigator.Action action, String route) {
         if (action == WheelNavigator.Action.NONE) {
+            DebugLog.each(TAG, "Key ignored: " + route);
             return;
         }
         long now = android.os.SystemClock.elapsedRealtime();
         if (WheelNavigator.isEcho(action, now, lastAction, lastActionAt)) {
+            DebugLog.each(TAG, action + " via " + route + ": echo, dropped");
             return; // The same press, arriving by the second route.
         }
+        DebugLog.each(TAG, action + " via " + route + " on answer " + selectedAnswer);
         lastAction = action;
         lastActionAt = now;
         if (action == WheelNavigator.Action.CONFIRM) {
@@ -326,6 +340,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
             return;
         }
         headUnitHidden = hide;
+        DebugLog.i(TAG, hide ? "Head unit hidden" : "Head unit shown (wheel " + wheelConnected
+                + ", media " + mediaHeld + ")");
         findViewById(android.R.id.content).setVisibility(hide ? View.INVISIBLE : View.VISIBLE);
         if (hide) {
             getWindow().setBackgroundDrawable(new ColorDrawable(0));
@@ -483,6 +499,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             open.setText(barrier.getActionType() == Barrier.ActionType.WEBHOOK
                     ? R.string.action_open : R.string.call);
             open.setOnClickListener(v -> {
+                DebugLog.i(TAG, "Opened nearby " + barrier.getName());
                 BarrierAction.trigger(this, barrier);
                 dismissPopup();
             });
@@ -499,6 +516,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
             clusterPrompt.show(title);
             if (clusterPrompt.isShowing() && !onCluster) {
                 onCluster = true;
+                DebugLog.i(TAG, "On the cluster");
                 // The head unit mirrors the cluster's Yes / No when it has to show at all.
                 btnWait.setVisibility(View.GONE);
                 autoDismissText.setVisibility(View.GONE);
@@ -581,6 +599,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
             @Override
             public void onFinish() {
+                DebugLog.i(TAG, "Timed out");
                 dismissPopup();
             }
         };
@@ -620,6 +639,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
     }
 
     private void confirmAction() {
+        DebugLog.i(TAG, "Answered yes");
         if (primaryBarrier == null) {
             // A barrier deleted while the popup was up: nothing to trigger.
             dismissPopup();
@@ -681,6 +701,7 @@ public class BarrierPopupActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
+        DebugLog.i(TAG, "Back pressed");
         dismissPopup();
     }
 }

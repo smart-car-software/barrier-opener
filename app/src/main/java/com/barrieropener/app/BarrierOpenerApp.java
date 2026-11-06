@@ -28,6 +28,7 @@ public class BarrierOpenerApp extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        DebugLog.init(this);
         String apiKey = BuildConfig.YANDEX_MAPKIT_API_KEY;
         if (apiKey == null || apiKey.isEmpty()) {
             Log.e(TAG, "YANDEX_MAPKIT_API_KEY is not configured. " +

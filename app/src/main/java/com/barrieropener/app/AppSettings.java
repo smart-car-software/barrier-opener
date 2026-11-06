@@ -30,6 +30,9 @@ final class AppSettings {
     private static final String KEY_CLUSTER = "cluster_popup";
     private static final String KEY_WHEEL = "wheel_keys";
     private static final String KEY_MUTE = "mute_media";
+    private static final String KEY_LOG_URL = "log_url";
+    private static final String KEY_LOG_USER = "log_user";
+    private static final String KEY_LOG_PASSWORD = "log_password";
     /**
      * The Monjaro's instrument cluster: display #2, the 1920x1080 one of its three "HDMI
      * screens". Fixed rather than chosen — that is the car this feature is for.
@@ -68,5 +71,29 @@ final class AppSettings {
 
     static void setMuteMedia(Context c, boolean on) {
         prefs(c).edit().putBoolean(KEY_MUTE, on).apply();
+    }
+
+    /**
+     * Where "Send logs" goes ({@link LogSender}): empty until typed, since the repository is public
+     * and the server is the owner's own. A bare host is enough; see {@link LogPayload#endpoint}.
+     */
+    static String logUrl(Context c) {
+        return prefs(c).getString(KEY_LOG_URL, "");
+    }
+
+    static String logUser(Context c) {
+        return prefs(c).getString(KEY_LOG_USER, "");
+    }
+
+    static String logPassword(Context c) {
+        return prefs(c).getString(KEY_LOG_PASSWORD, "");
+    }
+
+    static void setLogServer(Context c, String url, String user, String password) {
+        prefs(c).edit()
+                .putString(KEY_LOG_URL, url.trim())
+                .putString(KEY_LOG_USER, user.trim())
+                .putString(KEY_LOG_PASSWORD, password)
+                .apply();
     }
 }

@@ -18,6 +18,7 @@
 package com.barrieropener.app;
 
 import android.os.Bundle;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,11 +26,14 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.material.materialswitch.MaterialSwitch;
 
-/** The app-wide switches in {@link AppSettings}: the driver's-screen popup and the wheel keys. */
+/** The app-wide settings in {@link AppSettings}: driver's-screen popup, wheel keys, log server. */
 public class SettingsActivity extends AppCompatActivity {
 
     private RootStream check;
     private TextView status;
+    private EditText logUrl;
+    private EditText logUser;
+    private EditText logPassword;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +67,24 @@ public class SettingsActivity extends AppCompatActivity {
         if (wheel.isChecked()) {
             checkRoot();
         }
+
+        logUrl = findViewById(R.id.editLogUrl);
+        logUser = findViewById(R.id.editLogUser);
+        logPassword = findViewById(R.id.editLogPassword);
+        logUrl.setText(AppSettings.logUrl(this));
+        logUser.setText(AppSettings.logUser(this));
+        logPassword.setText(AppSettings.logPassword(this));
+    }
+
+    /** Saved on leaving the screen, whatever way it is left. */
+    @Override
+    protected void onPause() {
+        AppSettings.setLogServer(this, text(logUrl), text(logUser), text(logPassword));
+        super.onPause();
+    }
+
+    private static String text(EditText e) {
+        return e.getText() == null ? "" : e.getText().toString();
     }
 
     /**

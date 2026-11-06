@@ -150,6 +150,11 @@
     <string name="settings_check_root_running">Проверяю… если на экране спросят, разрешите отладку.</string>
     <string name="settings_check_root_ok">Root через ADB работает.</string>
     <string name="settings_check_root_failed">Root недоступен: %1$s</string>
+    <string name="settings_log_server">Сервер логов</string>
+    <string name="settings_log_server_hint">Куда кнопка «Отправить логи» на экране «Руль и приборка» шлёт журнал и логи приложения (VictoriaLogs). Достаточно указать хост.</string>
+    <string name="settings_log_url">Адрес сервера</string>
+    <string name="settings_log_user">Логин</string>
+    <string name="settings_log_password">Пароль</string>
 
     <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->
     <string name="car_diag_title">Руль и приборка</string>
@@ -160,7 +165,12 @@
     <string name="car_diag_media_off">Вернуть медиакнопки плееру</string>
     <string name="car_diag_root_inputimpl">Лог кнопок руля (root через ADB)</string>
     <string name="car_diag_copied">Отчёт скопирован</string>
-    <string name="car_diag_share">Отправить отчёт</string>
+    <string name="car_diag_share">Поделиться отчётом</string>
+    <string name="logs_send">Отправить логи</string>
+    <string name="logs_sending">Отправляю логи…</string>
+    <string name="logs_sent">Логи отправлены: %1$d строк</string>
+    <string name="logs_send_failed">Логи не отправлены: %1$s</string>
+    <string name="logs_no_server">Логи не отправлены: в настройках нет сервера логов</string>
 
     <!-- Add/Edit Barrier Screen -->
     <string name="barrier_type">Тип шлагбаума</string>

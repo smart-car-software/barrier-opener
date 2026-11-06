@@ -18,7 +18,6 @@
 package com.barrieropener.app;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.ContextThemeWrapper;
 import android.view.Display;
@@ -75,6 +74,7 @@ final class ClusterPrompt {
         }
         Display display = ClusterDisplay.find(context, id);
         if (display == null) {
+            DebugLog.i(TAG, "Cluster display #" + id + " not found");
             return; // The cluster is not up yet, or this is not a Monjaro.
         }
         try {
@@ -92,7 +92,7 @@ final class ClusterPrompt {
         } catch (RuntimeException e) {
             // No overlay permission, or a firmware that refuses windows there: the head-unit
             // popup still asks the question.
-            Log.w(TAG, "Cluster copy not shown", e);
+            DebugLog.w(TAG, "Cluster copy not shown", e);
         }
     }
 

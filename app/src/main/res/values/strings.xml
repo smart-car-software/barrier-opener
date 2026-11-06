@@ -142,6 +142,11 @@
     <string name="settings_check_root_running">Checking… allow debugging on the screen if asked.</string>
     <string name="settings_check_root_ok">Root through adb works.</string>
     <string name="settings_check_root_failed">No root: %1$s</string>
+    <string name="settings_log_server">Log server</string>
+    <string name="settings_log_server_hint">Where \"Send logs\" on the Wheel &amp; cluster screen sends the app\'s journal and logs (VictoriaLogs). The host alone is enough.</string>
+    <string name="settings_log_url">Server address</string>
+    <string name="settings_log_user">Login</string>
+    <string name="settings_log_password">Password</string>
 
     <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->
     <string name="car_diag_title">Wheel &amp; cluster</string>
@@ -153,6 +158,11 @@
     <string name="car_diag_root_inputimpl">Wheel key log (root through adb)</string>
     <string name="car_diag_copied">Report copied</string>
     <string name="car_diag_share">Share report</string>
+    <string name="logs_send">Send logs</string>
+    <string name="logs_sending">Sending logs…</string>
+    <string name="logs_sent">Logs sent: %1$d lines</string>
+    <string name="logs_send_failed">Logs not sent: %1$s</string>
+    <string name="logs_no_server">Logs not sent: no log server in the settings</string>
 
     <!-- Location Service -->
     <string name="location_timeout">Could not get location: timeout</string>

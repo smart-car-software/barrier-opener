@@ -99,7 +99,7 @@ final class MonjaroWheel {
                     }
                 });
             } catch (Exception e) {
-                Log.w(TAG, "Wheel log ended", e);
+                DebugLog.w(TAG, "Wheel log ended", e);
             }
             logStream = null;
             // Ended on its own (adb gone, root refused) or because the popup stopped it: either

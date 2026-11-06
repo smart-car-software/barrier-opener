@@ -78,6 +78,16 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
                 + " (keep from music: " + AppSettings.muteMedia(this) + ")");
 
         LinearLayout actions = findViewById(R.id.diagActions);
+        Button send = addAction(actions, getString(R.string.logs_send), null);
+        send.setOnClickListener(v -> {
+            send.setEnabled(false);
+            Toast.makeText(this, R.string.logs_sending, Toast.LENGTH_SHORT).show();
+            LogSender.send(this, report.toString(), message -> {
+                send.setEnabled(true);
+                appendReport(message);
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            });
+        });
         addAction(actions, getString(R.string.car_diag_root_inputimpl), this::startKeyLog);
         addAction(actions, getString(R.string.car_diag_media_on), () -> {
             mediaKeys.start((code, pressed) -> log("kept from music", code, pressed));
@@ -91,12 +101,15 @@ public class CarDiagnosticsActivity extends AppCompatActivity {
         addAction(actions, getString(R.string.car_diag_share), this::shareReport);
     }
 
-    private void addAction(LinearLayout parent, String label, Runnable action) {
+    private Button addAction(LinearLayout parent, String label, Runnable action) {
         Button b = new Button(this);
         b.setAllCaps(false);
         b.setText(label);
-        b.setOnClickListener(v -> action.run());
+        if (action != null) {
+            b.setOnClickListener(v -> action.run());
+        }
         parent.addView(b);
+        return b;
     }
 
     private void startKeyLog() {

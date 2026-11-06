@@ -121,13 +121,13 @@ public class LocationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACTION_STOP.equals(intent.getAction())) {
-            Log.d(TAG, "Stop action received");
+            DebugLog.i(TAG, "Stop action received");
             stopForeground(true);
             stopSelf();
             return START_NOT_STICKY;
         }
 
-        Log.d(TAG, "Starting service...");
+        DebugLog.i(TAG, "Service started");
         _isStarted = true;
 
         createNotificationChannel();
@@ -241,7 +241,7 @@ public class LocationService extends Service {
             // hears so. If the gate can't be read in time, the question is put as it always was.
             Barrier primary = res.primary;
             unlessGateAlreadyOpen(primary, () -> deliverDetectionPopup(res), () -> {
-                Log.i(TAG, primary.getName() + " is already open; not asking");
+                DebugLog.i(TAG, primary.getName() + " is already open; not asking");
                 Toast.makeText(this, getString(R.string.gate_already_open, primary.getName()),
                         Toast.LENGTH_LONG).show();
                 triggerState.markTriggered(primary.getId());
@@ -297,7 +297,7 @@ public class LocationService extends Service {
                     @Override
                     public void onFailure(GateApiClient.Failure failure) {
                         openChecksInFlight.remove(barrierId);
-                        Log.d(TAG, "Could not read the gate before offering to open: " + failure);
+                        DebugLog.i(TAG, "Could not read the gate before offering to open: " + failure);
                         if (_isStarted) {
                             show.run();
                         }
@@ -370,7 +370,7 @@ public class LocationService extends Service {
             // to ask. The question stays pending while the gate is being read, so a fix arriving
             // in the meantime neither re-asks nor gives up.
             unlessGateAlreadyOpen(barrier, () -> putStartupQuestion(barrier, inZone), () -> {
-                Log.i(TAG, barrier.getName() + " is already open; startup question dropped");
+                DebugLog.i(TAG, barrier.getName() + " is already open; startup question dropped");
                 Toast.makeText(this, getString(R.string.gate_already_open, barrier.getName()),
                         Toast.LENGTH_LONG).show();
                 startupPromptPending = false;
@@ -424,12 +424,13 @@ public class LocationService extends Service {
      */
     private void onShiftedToPark() {
         Map<Long, Long> pending = pendingClose.all();
+        DebugLog.i(TAG, "Shifted into Park; gates waiting to close: " + pending.size());
         if (pending.isEmpty()) {
             return;
         }
         if (lastLocation == null) {
             // Without a fix there is no way to tell this gate's yard from a car park across town.
-            Log.d(TAG, "Shifted into Park, but there is no fix to place the car by");
+            DebugLog.i(TAG, "Shifted into Park, but there is no fix to place the car by");
             return;
         }
         for (Barrier b : repository.getAll()) {
@@ -514,12 +515,12 @@ public class LocationService extends Service {
                             return; // Service gone, or cleared while we were asking.
                         }
                         if (!state.haReachable) {
-                            Log.d(TAG, "Service up but Home Assistant down; closing question waits");
+                            DebugLog.i(TAG, "Service up but Home Assistant down; closing question waits");
                             deferClose(barrierId, reason);
                             return;
                         }
                         if (state.state == GateState.State.CLOSED) {
-                            Log.i(TAG, barrier.getName() + " is already closed; not asking");
+                            DebugLog.i(TAG, barrier.getName() + " is already closed; not asking");
                             pendingClose.clear(barrierId);
                             Toast.makeText(LocationService.this,
                                     getString(R.string.gate_already_closed, barrier.getName()),
@@ -532,7 +533,7 @@ public class LocationService extends Service {
                     @Override
                     public void onFailure(GateApiClient.Failure failure) {
                         closeChecksInFlight.remove(barrierId);
-                        Log.d(TAG, "Could not read the gate before asking to close: " + failure);
+                        DebugLog.i(TAG, "Could not read the gate before asking to close: " + failure);
                         if (_isStarted) {
                             deferClose(barrierId, reason);
                         }
@@ -546,7 +547,7 @@ public class LocationService extends Service {
     }
 
     private void putCloseQuestion(Barrier barrier, CloseResolver.Reason reason) {
-        Log.d(TAG, "Offering to close " + barrier.getName() + " (" + reason + ")");
+        DebugLog.i(TAG, "Offering to close " + barrier.getName() + " (" + reason + ")");
         triggerClosePopup(barrier);
         // Asked once; the popup clears the entry when the driver answers or it times out.
         pendingClose.clear(barrier.getId());
@@ -589,12 +590,13 @@ public class LocationService extends Service {
         try {
             startActivity(popupIntent);
         } catch (Exception e) {
-            Log.w(TAG, "Could not start close popup directly", e);
+            DebugLog.w(TAG, "Could not start close popup directly", e);
         }
         showPopupFullScreenNotification(barrier, popupIntent);
     }
 
     private boolean triggerBarrierPopup(Barrier primary, List<Barrier> inZone) {
+        DebugLog.i(TAG, "Offering to open " + primary.getName() + " (" + inZone.size() + " in zone)");
         Intent popupIntent = buildPopupIntent(primary, inZone);
 
         // Best effort: a direct launch works in the foreground / on lenient OEMs, but on Android
@@ -604,7 +606,7 @@ public class LocationService extends Service {
         try {
             startActivity(popupIntent);
         } catch (Exception e) {
-            Log.w(TAG, "Could not start popup activity directly", e);
+            DebugLog.w(TAG, "Could not start popup activity directly", e);
         }
         return showPopupFullScreenNotification(primary, popupIntent);
     }
