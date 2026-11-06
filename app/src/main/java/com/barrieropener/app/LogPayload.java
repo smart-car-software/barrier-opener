@@ -59,12 +59,12 @@ final class LogPayload {
         if (!url.contains("://")) {
             url = "https://" + url;
         }
-        while (url.endsWith("/")) {
+        int hostStart = url.indexOf("://") + 3;
+        while (url.length() > hostStart && url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
-        int hostStart = url.indexOf("://") + 3;
-        if (hostStart >= url.length()) {
-            return null;
+        if (hostStart >= url.length() || url.charAt(hostStart) == '/') {
+            return null; // No host.
         }
         boolean hasPath = url.indexOf('/', hostStart) >= 0 || url.indexOf('?', hostStart) >= 0;
         return hasPath ? url : url + INSERT_PATH;
