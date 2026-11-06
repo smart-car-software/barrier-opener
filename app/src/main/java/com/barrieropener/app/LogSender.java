@@ -49,6 +49,7 @@ final class LogSender {
     private static final String APP = "barrier-opener";
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int READ_TIMEOUT_MS = 30_000;
+    private static final int MAX_REDIRECTS = 2;
     /** The server takes up to 10 MB; what does not fit is the oldest logcat, and is dropped. */
     private static final int MAX_BODY_CHARS = 8_000_000;
     private static final String OWN_LOGCAT = "logcat -d -v threadtime -t 3000";
@@ -112,13 +113,26 @@ final class LogSender {
         }
         appendLines(body, count, ownLogcat(), with(base, "source", "logcat"), now);
 
-        int code = post(endpoint, AppSettings.logUser(c), AppSettings.logPassword(c),
-                body.toString().getBytes(StandardCharsets.UTF_8));
+        byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
+        String target = endpoint;
+        String[] location = new String[1];
+        int code = 0;
+        // HttpURLConnection does not follow a POST's redirect, least of all http → https, which
+        // is exactly what a server behind TLS answers an address typed as http://. Followed by
+        // hand, a couple of hops at most: sending logs again is harmless, unlike a gate's impulse.
+        for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
+            location[0] = null;
+            code = post(target, AppSettings.logUser(c), AppSettings.logPassword(c), bytes, location);
+            if (code < 300 || code >= 400 || location[0] == null) {
+                break;
+            }
+            target = new URL(new URL(target), location[0]).toString();
+        }
         if (code >= 200 && code < 300) {
             DebugLog.i("LogSender", "Sent " + count[0] + " lines");
             return c.getString(R.string.logs_sent, count[0]);
         }
-        return c.getString(R.string.logs_send_failed, "HTTP " + code);
+        return c.getString(R.string.logs_send_failed, "HTTP " + code + " " + target);
     }
 
     private static Map<String, String> with(Map<String, String> base, String key, String value) {
@@ -190,11 +204,13 @@ final class LogSender {
         return out.toString();
     }
 
-    private static int post(String target, String user, String password, byte[] body)
-            throws Exception {
+    /** @param location receives the Location header of a redirect, if any */
+    private static int post(String target, String user, String password, byte[] body,
+                            String[] location) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(target).openConnection();
         try {
             connection.setRequestMethod("POST");
+            connection.setInstanceFollowRedirects(false); // Followed in sendNow, with the body.
             connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
             connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setUseCaches(false);
@@ -211,6 +227,7 @@ final class LogSender {
                 out.write(body);
             }
             int code = connection.getResponseCode();
+            location[0] = connection.getHeaderField("Location");
             try (InputStream in = code >= 400 ? connection.getErrorStream() : connection.getInputStream()) {
                 if (in != null) {
                     byte[] buffer = new byte[1024];
