@@ -69,7 +69,9 @@ final class AppSettings {
                     .replace("com.barrieropener.app.", "")).append('.').append(stack[i].getMethodName());
         }
         DebugLog.i("AppSettings", key + " = " + on + " (from " + from + ")");
-        prefs(c).edit().putBoolean(key, on).apply();
+        // commit, not apply: a head unit's process can be killed seconds after a tap (the engine
+        // off), and a switch that silently reverts is worse than a millisecond on the main thread.
+        prefs(c).edit().putBoolean(key, on).commit();
     }
 
     /** All the switches on one line, for the journal. */
