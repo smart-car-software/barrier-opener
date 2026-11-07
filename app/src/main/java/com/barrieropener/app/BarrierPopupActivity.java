@@ -24,11 +24,9 @@ import android.content.Intent;
 import android.location.Location;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
@@ -66,46 +64,12 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private Button btnWait;
     private CountDownTimer countdown;
 
-    /** Yes / No / Wait, in the order the wheel walks them. */
-    private View[] answers;
-    /** Index into {@link #answers} the wheel has selected. */
-    private int selectedAnswer;
-    /** ⏮ ⏭ ⏯ on a Monjaro, read as root; only with the settings switch on. */
-    private MonjaroWheel monjaroWheel;
-    /** Holds the media keys away from the player while the wheel answers. */
-    private MediaKeyCatcher mediaKeys;
-    /** The same question on the driver's screen, answered with the wheel. */
-    private ClusterPrompt clusterPrompt;
-
     /** Intent extra: "close" puts the popup in closing mode; anything else means opening. */
     public static final String EXTRA_MODE = "popup_mode";
     public static final String MODE_CLOSE = "close";
 
     private String barrierName;
     private boolean closeMode;
-    /**
-     * The question is on the driver's screen: two answers, no timer. A driver who has to look at
-     * the cluster and reach for the wheel gets as long as they need; the question goes only when
-     * answered.
-     */
-    private boolean onCluster;
-    /** The wheel's key log is being followed. */
-    private boolean wheelConnected;
-    /** The media keys are held — and with them the wheel's presses, see MediaKeyCatcher. */
-    private boolean mediaHeld;
-    private WheelNavigator.Action lastAction = WheelNavigator.Action.NONE;
-    private long lastActionAt;
-    private boolean headUnitHidden;
-    /**
-     * The cluster has no timer, but a question nobody can answer must still go some time: should
-     * every way of answering fail at once, this is the last word.
-     */
-    private static final long CLUSTER_GIVE_UP_MS = 5 * 60_000L;
-    private final android.os.Handler clusterTimeout = new android.os.Handler(android.os.Looper.getMainLooper());
-    private final Runnable giveUp = () -> {
-        DebugLog.i(TAG, "Cluster question gave up unanswered");
-        dismissPopup();
-    };
     private long primaryId = -1;
     private Barrier primaryBarrier;
     private long[] nearbyIds;
@@ -170,12 +134,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
         // suggested barrier actually changed. A same-primary redelivery must NOT undo a "Wait" the
         // user pressed or restart the auto-dismiss out from under them.
         if (primaryChanged) {
-            DebugLog.i(TAG, "Asking to " + (closeMode ? "close " : "open ") + barrierName
-                    + " (on cluster " + onCluster + "; " + AppSettings.describe(this) + ")");
+            DebugLog.i(TAG, "Asking to " + (closeMode ? "close " : "open ") + barrierName);
             resetWaitButton();
-            // A fresh question starts on "Yes" — the answer the popup exists to offer.
-            selectedAnswer = 0;
-            renderSelection();
             restartCountdown();
             playSound();
         }
@@ -195,7 +155,6 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void resetWaitButton() {
         btnWait.setEnabled(true);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_blue_background));
-        renderSelection();
     }
 
     private void showOverLockscreen() {
@@ -248,124 +207,6 @@ public class BarrierPopupActivity extends AppCompatActivity {
         btnWait.setEnabled(true);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_blue_background));
 
-        answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo), btnWait};
-        clusterPrompt = new ClusterPrompt(this);
-        renderSelection();
-        monjaroWheel = new MonjaroWheel(this);
-        mediaKeys = new MediaKeyCatcher(this);
-        if (AppSettings.wheelKeys(this)) {
-            // For the popup's whole life, not per resume: the root log stream takes a second to
-            // connect, and a popup flickering through pause/resume must not reopen it each time.
-            monjaroWheel.start(this::onWheelKey, connected -> {
-                DebugLog.i(TAG, connected ? "Wheel key log connected" : "Wheel key log ended");
-                wheelConnected = connected;
-                updateHeadUnitVisibility();
-            });
-            if (AppSettings.muteMedia(this)) {
-                // Keeps the player from acting on the keys — and, while it does, is where the
-                // presses arrive: the key log above goes quiet for as long as this holds them.
-                mediaHeld = mediaKeys.start((code, pressed) -> {
-                    if (pressed && !isFinishing()) {
-                        onWheelAction(WheelNavigator.actionForMediaKey(code), "media " + code);
-                    }
-                });
-                DebugLog.i(TAG, "Media keys " + (mediaHeld ? "held" : "NOT held (silent track failed)"));
-            }
-        }
-    }
-
-    /**
-     * Wheel keys that arrive as ordinary key events — units whose wheel is wired as a d-pad.
-     * A Monjaro does not deliver them this way; see {@link MonjaroWheel}.
-     */
-    @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
-        int code = event.getKeyCode();
-        if (WheelNavigator.actionFor(code) == WheelNavigator.Action.NONE) {
-            return super.dispatchKeyEvent(event);
-        }
-        // Act on the press only, and only on its first event: a held key auto-repeats, and a
-        // repeated "confirm" is exactly the double impulse a sliding gate reads as "stop".
-        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-            onWheelAction(WheelNavigator.actionFor(code), "key event " + code);
-        }
-        return true;
-    }
-
-    private void onWheelKey(int code, boolean pressed) {
-        if (!pressed || isFinishing()) {
-            return;
-        }
-        onWheelAction(WheelNavigator.actionFor(code), "key log " + code);
-    }
-
-    /** @param route where the press came from, for the journal */
-    private void onWheelAction(WheelNavigator.Action action, String route) {
-        if (action == WheelNavigator.Action.NONE) {
-            DebugLog.each(TAG, "Key ignored: " + route);
-            return;
-        }
-        long now = android.os.SystemClock.elapsedRealtime();
-        if (WheelNavigator.isEcho(action, now, lastAction, lastActionAt)) {
-            DebugLog.each(TAG, action + " via " + route + ": echo, dropped");
-            return; // The same press, arriving by the second route.
-        }
-        DebugLog.each(TAG, action + " via " + route + " on answer " + selectedAnswer);
-        lastAction = action;
-        lastActionAt = now;
-        if (action == WheelNavigator.Action.CONFIRM) {
-            View chosen = selectedAnswer >= 0 ? answers[selectedAnswer] : null;
-            if (chosen != null && chosen.isEnabled()) {
-                chosen.performClick();
-            }
-            return;
-        }
-        selectedAnswer = WheelNavigator.move(selectedAnswer, action, enabledAnswers());
-        renderSelection();
-    }
-
-    /**
-     * With the question on the driver's screen, the head-unit copy is only in the way: the driver
-     * asked for the cluster alone. The activity stays — it owns the sound and the wheel keys — but
-     * draws nothing, dims nothing and lets every touch through to the app beneath.
-     *
-     * <p>Only while the cluster copy is up <em>and</em> the wheel can answer it. The cluster has
-     * no touch; with the wheel's key log not (or no longer) followed, a hidden head unit would
-     * leave a question nobody can answer — which is exactly what happened on the car when the log
-     * did not connect for a closing question. Then the head unit shows it again, tappable.
-     */
-    private void updateHeadUnitVisibility() {
-        boolean hide = onCluster && (wheelConnected || mediaHeld);
-        if (hide == headUnitHidden) {
-            return;
-        }
-        headUnitHidden = hide;
-        DebugLog.i(TAG, hide ? "Head unit hidden" : "Head unit shown (wheel " + wheelConnected
-                + ", media " + mediaHeld + ")");
-        findViewById(android.R.id.content).setVisibility(hide ? View.INVISIBLE : View.VISIBLE);
-        if (hide) {
-            getWindow().setBackgroundDrawable(new ColorDrawable(0));
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-        } else {
-            getWindow().setBackgroundDrawableResource(R.color.scrim_80);
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-        }
-    }
-
-    /** Paints the wheel's selection here and on the driver's-screen copy. */
-    private void renderSelection() {
-        WheelKeys.showSelection(answers, selectedAnswer);
-        clusterPrompt.render(selectedAnswer, enabledAnswers());
-    }
-
-    private boolean[] enabledAnswers() {
-        boolean[] enabled = new boolean[answers.length];
-        for (int i = 0; i < answers.length; i++) {
-            enabled[i] = answers[i].isEnabled();
-        }
-        return enabled;
     }
 
     private void getIntentData() {
@@ -513,31 +354,10 @@ public class BarrierPopupActivity extends AppCompatActivity {
                     closeMode ? R.string.popup_close_title_window : R.string.popup_title_window,
                     barrierName);
             barrierNameText.setText(title);
-            clusterPrompt.show(title);
-            if (clusterPrompt.isShowing() && !onCluster) {
-                onCluster = true;
-                DebugLog.i(TAG, "On the cluster");
-                // The head unit mirrors the cluster's Yes / No when it has to show at all.
-                btnWait.setVisibility(View.GONE);
-                autoDismissText.setVisibility(View.GONE);
-                clusterTimeout.postDelayed(giveUp, CLUSTER_GIVE_UP_MS);
-                updateHeadUnitVisibility();
-                answers = new View[]{findViewById(R.id.btnYes), findViewById(R.id.btnNo)};
-                if (selectedAnswer >= answers.length) {
-                    selectedAnswer = 0;
-                }
-                if (countdown != null) {
-                    countdown.cancel();
-                    countdown = null;
-                }
-            }
-            renderSelection();
         }
-        if (!onCluster) {
-            autoDismissText.setVisibility(View.VISIBLE);
-            autoDismissText.setText(getString(R.string.auto_dismiss,
-                    (int) (AUTO_DISMISS_DELAY_MS / 1000L)));
-        }
+        autoDismissText.setVisibility(View.VISIBLE);
+        autoDismissText.setText(getString(R.string.auto_dismiss,
+                (int) (AUTO_DISMISS_DELAY_MS / 1000L)));
     }
 
     /**
@@ -586,9 +406,6 @@ public class BarrierPopupActivity extends AppCompatActivity {
             countdown.cancel();
             countdown = null;
         }
-        if (onCluster) {
-            return; // No timer on the driver's screen.
-        }
         autoDismissText.setVisibility(View.VISIBLE);
         countdown = new CountDownTimer(AUTO_DISMISS_DELAY_MS, COUNTDOWN_TICK_MS) {
             @Override
@@ -614,11 +431,6 @@ public class BarrierPopupActivity extends AppCompatActivity {
         autoDismissText.setVisibility(View.GONE);
         btnWait.setEnabled(false);
         btnWait.setBackground(AppCompatResources.getDrawable(this, R.drawable.button_gray_background));
-        // "Wait" is spent; a wheel resting on it would confirm nothing.
-        if (selectedAnswer == answers.length - 1) {
-            selectedAnswer = WheelNavigator.firstEnabled(enabledAnswers());
-        }
-        renderSelection();
     }
 
     private void playSound() {
@@ -691,10 +503,6 @@ public class BarrierPopupActivity extends AppCompatActivity {
             popupLocationManager.destroy();
             popupLocationManager = null;
         }
-        clusterTimeout.removeCallbacks(giveUp);
-        clusterPrompt.dismiss();
-        monjaroWheel.stop();
-        mediaKeys.stop();
         cancelPopupNotification();
         super.onDestroy();
     }

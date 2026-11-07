@@ -72,15 +72,17 @@ final class DebugLog {
         add(tag, message, true);
     }
 
-    /** Every occurrence counts (a wheel press): never folded into the one before. */
-    static void each(String tag, String message) {
-        Log.i(tag, message);
-        add(tag, message, false);
-    }
-
     static void w(String tag, String message, Throwable error) {
         Log.w(tag, message, error);
-        add(tag, error == null ? message : message + ": " + WheelKeys.rootCause(error), true);
+        add(tag, error == null ? message : message + ": " + rootCause(error), true);
+    }
+
+    /** "SocketTimeoutException: connect timed out" — the innermost cause, which is the one that says why. */
+    static String rootCause(Throwable t) {
+        while (t.getCause() != null && t.getCause() != t) {
+            t = t.getCause();
+        }
+        return t.getClass().getSimpleName() + ": " + t.getMessage();
     }
 
     private static synchronized void add(String tag, String message, boolean foldRepeats) {

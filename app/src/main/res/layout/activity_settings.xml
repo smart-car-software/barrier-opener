@@ -41,61 +41,17 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchClusterPopup"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_cluster_popup"
+                android:text="@string/settings_notify_service"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp" />
 
             <TextView
+                android:id="@+id/textNotifyStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_cluster_popup_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchWheelKeys"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/settings_wheel_keys"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_wheel_keys_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/switchMuteMedia"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="8dp"
-                android:text="@string/settings_mute_media"
-                android:textColor="@color/text_primary" />
-
-            <TextView
-                android:id="@+id/textMuteHint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:text="@string/settings_mute_media_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-
-            <TextView
-                android:id="@+id/textWheelStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp" />
 
@@ -159,6 +115,14 @@
                     android:inputType="textPassword"
                     android:maxLines="1" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <Button
+                android:id="@+id/btnSendLogs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/logs_send"
+                android:textAllCaps="false" />
 
         </LinearLayout>
     </ScrollView>

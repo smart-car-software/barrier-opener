@@ -133,31 +133,14 @@
     <string name="popup_nearby_header">Also in range:</string>
     <string name="popup_close_title_window">Close barrier %s?</string>
     <string name="settings_title">Settings</string>
-    <string name="settings_cluster_popup">Popup on the driver\'s screen</string>
-    <string name="settings_cluster_popup_hint">The question appears on the instrument cluster, under the navigation hint, instead of the head unit. If the cluster display is missing, it shows on the head unit as before.</string>
-    <string name="settings_wheel_keys">Answer with the wheel ⏮ ⏭ ⏯</string>
-    <string name="settings_wheel_keys_hint">⏮ / ⏭ choose, ⏯ presses. Needs root and adb over the network switched on (as for MConfig+); the first time the unit asks to allow debugging.</string>
-    <string name="settings_mute_media">Keep those keys from controlling music while asking</string>
-    <string name="settings_mute_media_hint">The music keeps playing but ignores these keys while the question is up. No root needed: for that time the app briefly takes the media keys from the player.</string>
-    <string name="settings_check_root_running">Checking… allow debugging on the screen if asked.</string>
-    <string name="settings_check_root_ok">Root through adb works.</string>
-    <string name="settings_check_root_failed">No root: %1$s</string>
+    <string name="settings_notify_service">Popups</string>
+    <string name="settings_notify_installed">Car Notification Service is installed: questions go through it — on the cluster and the head unit, answered with the wheel.</string>
+    <string name="settings_notify_missing">Car Notification Service is not installed: questions are shown here, on the head unit. Install it for popups on the cluster answered with the wheel.</string>
     <string name="settings_log_server">Log server</string>
-    <string name="settings_log_server_hint">Where \"Send logs\" on the Wheel &amp; cluster screen sends the app\'s journal and logs (VictoriaLogs). The host alone is enough.</string>
+    <string name="settings_log_server_hint">Where \"Send logs\" sends the app\'s journal and logs (VictoriaLogs). The host alone is enough.</string>
     <string name="settings_log_url">Server address</string>
     <string name="settings_log_user">Login</string>
     <string name="settings_log_password">Password</string>
-
-    <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build). -->
-    <string name="car_diag_title">Wheel &amp; cluster</string>
-    <string name="car_diag_hint">Tap \"Wheel key log\" and press the wheel keys — each press shows below with what it does in the popup. \"Take the media keys from the player\" checks that the music ignores them while a question is up.</string>
-    <string name="car_diag_no_keys">No keys yet.</string>
-    <string name="car_diag_copy">Copy report</string>
-    <string name="car_diag_media_on">Take the media keys from the player (test)</string>
-    <string name="car_diag_media_off">Give the media keys back</string>
-    <string name="car_diag_root_inputimpl">Wheel key log (root through adb)</string>
-    <string name="car_diag_copied">Report copied</string>
-    <string name="car_diag_share">Share report</string>
     <string name="logs_send">Send logs</string>
     <string name="logs_sending">Sending logs…</string>
     <string name="logs_sent">Logs sent: %1$d lines</string>

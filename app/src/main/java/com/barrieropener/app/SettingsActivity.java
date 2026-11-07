@@ -18,19 +18,21 @@
 package com.barrieropener.app;
 
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import com.google.android.material.materialswitch.MaterialSwitch;
-
-/** The app-wide settings in {@link AppSettings}: driver's-screen popup, wheel keys, log server. */
+/**
+ * The app-wide settings in {@link AppSettings}: where popups go (Car Notification Service, when
+ * installed) and the log server with its "Send logs".
+ */
 public class SettingsActivity extends AppCompatActivity {
 
-    private RootStream check;
-    private TextView status;
+    private TextView notifyStatus;
     private EditText logUrl;
     private EditText logUser;
     private EditText logPassword;
@@ -41,34 +43,7 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
         Toolbar toolbar = findViewById(R.id.settingsToolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
-        DebugLog.i("SettingsActivity", "Opened (" + AppSettings.describe(this)
-                + (savedInstanceState != null ? ", recreated" : "") + ")");
-
-        MaterialSwitch cluster = findViewById(R.id.switchClusterPopup);
-        cluster.setChecked(AppSettings.clusterPopup(this));
-        cluster.setOnCheckedChangeListener((b, on) -> AppSettings.setClusterPopup(this, on));
-
-        MaterialSwitch wheel = findViewById(R.id.switchWheelKeys);
-        MaterialSwitch mute = findViewById(R.id.switchMuteMedia);
-        wheel.setChecked(AppSettings.wheelKeys(this));
-        mute.setChecked(AppSettings.muteMedia(this));
-        mute.setEnabled(wheel.isChecked());
-        status = findViewById(R.id.textWheelStatus);
-        check = new RootStream(this);
-        wheel.setOnCheckedChangeListener((b, on) -> {
-            AppSettings.setWheelKeys(this, on);
-            mute.setEnabled(on);
-            if (on) {
-                checkRoot();
-            } else {
-                check.stop();
-                status.setText("");
-            }
-        });
-        mute.setOnCheckedChangeListener((b, on) -> AppSettings.setMuteMedia(this, on));
-        if (wheel.isChecked()) {
-            checkRoot();
-        }
+        notifyStatus = findViewById(R.id.textNotifyStatus);
 
         logUrl = findViewById(R.id.editLogUrl);
         logUser = findViewById(R.id.editLogUser);
@@ -76,44 +51,40 @@ public class SettingsActivity extends AppCompatActivity {
         logUrl.setText(AppSettings.logUrl(this));
         logUser.setText(AppSettings.logUser(this));
         logPassword.setText(AppSettings.logPassword(this));
+
+        Button send = findViewById(R.id.btnSendLogs);
+        send.setOnClickListener(v -> {
+            // What was just typed is what the driver expects to be used.
+            saveLogServer();
+            send.setEnabled(false);
+            Toast.makeText(this, R.string.logs_sending, Toast.LENGTH_SHORT).show();
+            LogSender.send(this, null, message -> {
+                send.setEnabled(true);
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+    /** Re-read on every return: the service may have been installed or removed meanwhile. */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        notifyStatus.setText(NotifyClient.installed(this)
+                ? R.string.settings_notify_installed : R.string.settings_notify_missing);
     }
 
     /** Saved on leaving the screen, whatever way it is left. */
     @Override
     protected void onPause() {
-        AppSettings.setLogServer(this, text(logUrl), text(logUser), text(logPassword));
+        saveLogServer();
         super.onPause();
+    }
+
+    private void saveLogServer() {
+        AppSettings.setLogServer(this, text(logUrl), text(logUser), text(logPassword));
     }
 
     private static String text(EditText e) {
         return e.getText() == null ? "" : e.getText().toString();
-    }
-
-    /**
-     * Checked by itself whenever the wheel keys are on: the first connection is also when the
-     * unit asks to allow debugging for this app, which is better asked while the driver is here,
-     * at the settings, than the first time a gate comes into range.
-     */
-    private void checkRoot() {
-        status.setText(R.string.settings_check_root_running);
-        StringBuilder out = new StringBuilder();
-        check.start("id -un", null, line -> {
-            if (!AppSettings.wheelKeys(this)) {
-                return; // Switched off meanwhile: the stopped check's ending says nothing.
-            }
-            if (line == null) {
-                boolean root = out.toString().contains("\nroot") || out.toString().startsWith("root");
-                status.setText(root ? getString(R.string.settings_check_root_ok)
-                        : getString(R.string.settings_check_root_failed, out.toString().trim()));
-            } else {
-                out.append(line).append('\n');
-            }
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        check.stop();
-        super.onDestroy();
     }
 }

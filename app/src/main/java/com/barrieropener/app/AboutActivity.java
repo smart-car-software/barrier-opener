@@ -59,14 +59,6 @@ public class AboutActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.aboutToolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
-        toolbar.inflateMenu(R.menu.menu_about);
-        toolbar.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.menuCarDiagnostics) {
-                startActivity(new Intent(this, CarDiagnosticsActivity.class));
-                return true;
-            }
-            return false;
-        });
 
         webView = findViewById(R.id.aboutWebView);
         progress = findViewById(R.id.aboutProgress);

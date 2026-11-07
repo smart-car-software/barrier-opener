@@ -41,9 +41,9 @@ import java.util.TimeZone;
 /**
  * "Send logs": everything that would otherwise be read off the screen and typed into a chat, in one
  * POST to the log server from the settings — the unit and its settings, the {@link DebugLog}
- * journal, the app's own logcat (an app may read its own lines without root) and, with the wheel
- * keys on, the ECarX input library's key log as root. One request, never retried: a driver who
- * wants it sent again presses again.
+ * journal and the app's own logcat (an app may read its own lines without root). The wheel's key
+ * log is Car Notification Service's to send now. One request, never retried: a driver who wants it
+ * sent again presses again.
  */
 final class LogSender {
     private static final String APP = "barrier-opener";
@@ -53,7 +53,6 @@ final class LogSender {
     /** The server takes up to 10 MB; what does not fit is the oldest logcat, and is dropped. */
     private static final int MAX_BODY_CHARS = 8_000_000;
     private static final String OWN_LOGCAT = "logcat -d -v threadtime -t 3000";
-    private static final String KEY_LOG = "logcat -d -b main -v threadtime -t 1000 InputImpl:V *:S";
 
     interface Done {
         /** Main thread: what to tell the driver. */
@@ -71,7 +70,7 @@ final class LogSender {
             try {
                 result = sendNow(c, screenReport);
             } catch (Exception e) {
-                result = c.getString(R.string.logs_send_failed, WheelKeys.rootCause(e));
+                result = c.getString(R.string.logs_send_failed, DebugLog.rootCause(e));
             }
             String message = result;
             main.post(() -> done.onDone(message));
@@ -106,11 +105,7 @@ final class LogSender {
             count[0]++;
         }
 
-        // Newest last in logcat, so a body that runs out of room keeps the journal and loses only
-        // the tail of the logcat — the key log goes in before it for the same reason.
-        if (AppSettings.wheelKeys(c)) {
-            appendLines(body, count, rootKeyLog(c), with(base, "source", "inputimpl"), now);
-        }
+        // Last, so a body that runs out of room keeps the journal and loses only logcat's tail.
         appendLines(body, count, ownLogcat(), with(base, "source", "logcat"), now);
 
         byte[] bytes = body.toString().getBytes(StandardCharsets.UTF_8);
@@ -147,9 +142,7 @@ final class LogSender {
                 + "\nbuild: " + Build.DISPLAY
                 + "\napp: " + BuildConfig.VERSION_NAME
                 + "\noverlay permission: " + Settings.canDrawOverlays(c)
-                + "\ncluster popup: " + AppSettings.clusterPopup(c)
-                + "\nwheel keys: " + AppSettings.wheelKeys(c)
-                + " (keep from music: " + AppSettings.muteMedia(c) + ")";
+                + "\nnotification service: " + NotifyClient.describe(c);
         if (screenReport != null && !screenReport.trim().isEmpty()) {
             s += "\n--- on screen\n" + screenReport.trim();
         }
@@ -189,19 +182,8 @@ final class LogSender {
             p.destroy();
             return out.toString();
         } catch (Exception e) {
-            return "logcat not read: " + WheelKeys.rootCause(e);
+            return "logcat not read: " + DebugLog.rootCause(e);
         }
-    }
-
-    /** Best effort: on a unit without adb or root this is one line saying so. */
-    private static String rootKeyLog(Context c) {
-        StringBuilder out = new StringBuilder();
-        try (LocalAdb adb = LocalAdb.connect(c, new StringBuilder())) {
-            adb.shell("su 0 sh -c '" + KEY_LOG + "'", out::append);
-        } catch (Exception e) {
-            out.append("\nkey log not read: ").append(WheelKeys.rootCause(e));
-        }
-        return out.toString();
     }
 
     /** @param location receives the Location header of a redirect, if any */

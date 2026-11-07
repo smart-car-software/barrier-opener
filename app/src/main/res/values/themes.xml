@@ -39,17 +39,4 @@
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.6</item>
     </style>
-
-    <!-- An answer on the driver's-screen card: equal thirds of the panel, px like the layout. -->
-    <style name="ClusterAnswer">
-        <item name="android:layout_width">0px</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_weight">1</item>
-        <item name="android:layout_marginHorizontal">4px</item>
-        <item name="android:gravity">center</item>
-        <item name="android:maxLines">1</item>
-        <item name="android:paddingVertical">8px</item>
-        <item name="android:textColor">@color/cluster_text</item>
-        <item name="android:textSize">24px</item>
-    </style>
 </resources>

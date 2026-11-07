@@ -33,9 +33,7 @@ import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +42,7 @@ import java.util.Set;
 public class LocationService extends Service {
     private static final String TAG = "LocationService";
     private static final String CHANNEL_ID = "BarrierOpenerServiceChannel";
-    private static final String POPUP_CHANNEL_ID = "BarrierPopupChannel";
+    static final String POPUP_CHANNEL_ID = "BarrierPopupChannel";
     private static final int NOTIFICATION_ID = 1;
     public static final int POPUP_NOTIFICATION_ID = 2;
     public static final String ACTION_STOP = "com.barrieropener.app.STOP";
@@ -109,9 +107,6 @@ public class LocationService extends Service {
         locationManager = new LocationManager(this);
         gearMonitor = new GearMonitor(this);
         hostReachability = new HostReachability();
-        // A popup that died with the media keys muted would leave the wheel unable to skip tracks
-        // until someone noticed; the service is the first thing to run after a crash or reboot.
-        MonjaroWheel.restoreIfLeftMuted(this);
         // Armed here rather than in onStartCommand: MainActivity re-issues startForegroundService
         // on every resume, and re-arming there would greet the driver with an "open the gate?"
         // popup every time they came back to the app while parked at home.
@@ -253,7 +248,8 @@ public class LocationService extends Service {
     }
 
     private void deliverDetectionPopup(NearbyResolver.Resolution res) {
-        boolean delivered = triggerBarrierPopup(res.primary, res.inZone);
+        boolean delivered = triggerBarrierPopup(res.primary, res.inZone,
+                BarrierQuestion.Kind.DRIVE_BY_OPEN);
 
         // Suppress every fresh directional match so popups don't stack — but only once we actually
         // reached the user. If neither the direct launch nor the notification can surface (e.g. all
@@ -388,7 +384,7 @@ public class LocationService extends Service {
         }
         // Same rule as the driving path: only a question that actually reached the driver counts as
         // asked, otherwise the next fix retries.
-        if (!triggerBarrierPopup(barrier, inZone)) {
+        if (!triggerBarrierPopup(barrier, inZone, BarrierQuestion.Kind.STARTUP_OPEN)) {
             return false;
         }
         startupPromptPending = false;
@@ -582,95 +578,29 @@ public class LocationService extends Service {
     }
 
     private void triggerClosePopup(Barrier barrier) {
-        Intent popupIntent = new Intent(this, BarrierPopupActivity.class);
-        popupIntent.putExtra("barrier_id", barrier.getId());
-        popupIntent.putExtra("barrier_name", barrier.getName());
-        popupIntent.putExtra(BarrierPopupActivity.EXTRA_MODE, BarrierPopupActivity.MODE_CLOSE);
-        popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        try {
-            startActivity(popupIntent);
-        } catch (Exception e) {
-            DebugLog.w(TAG, "Could not start close popup directly", e);
-        }
-        showPopupFullScreenNotification(barrier, popupIntent);
+        BarrierQuestion.ask(this, barrier, BarrierQuestion.Kind.CLOSE, null);
     }
 
-    private boolean triggerBarrierPopup(Barrier primary, List<Barrier> inZone) {
-        DebugLog.i(TAG, "Offering to open " + primary.getName() + " (" + inZone.size() + " in zone)");
-        Intent popupIntent = buildPopupIntent(primary, inZone);
-
-        // Best effort: a direct launch works in the foreground / on lenient OEMs, but on Android
-        // 10–12 a background-activity start from a service is silently dropped, so we don't rely on
-        // it. The high-priority full-screen-intent notification is the reliable path that surfaces
-        // over other apps and the lock screen, so its deliverability is what gates suppression.
-        try {
-            startActivity(popupIntent);
-        } catch (Exception e) {
-            DebugLog.w(TAG, "Could not start popup activity directly", e);
-        }
-        return showPopupFullScreenNotification(primary, popupIntent);
-    }
-
-    private Intent buildPopupIntent(Barrier primary, List<Barrier> inZone) {
-        // The nearby list is every in-zone barrier except the one already shown as the suggestion.
-        List<Barrier> nearby = new ArrayList<>();
+    /**
+     * Puts an opening question — to Car Notification Service when it is installed, else as the
+     * head-unit popup; see {@link BarrierQuestion}. Returns whether it reached the driver, which is
+     * what gates suppression.
+     */
+    private boolean triggerBarrierPopup(Barrier primary, List<Barrier> inZone,
+                                        BarrierQuestion.Kind kind) {
+        DebugLog.i(TAG, "Offering to open " + primary.getName() + " (" + inZone.size() + " in zone, "
+                + kind + ")");
+        // The popup's nearby list is every in-zone barrier except the one already asked about.
+        // Only ids travel — the popup re-reads the barriers from the database, so whichever action
+        // each one carries is always the current one.
+        long[] ids = new long[inZone.size()];
+        int n = 0;
         for (Barrier b : inZone) {
             if (b.getId() != primary.getId()) {
-                nearby.add(b);
+                ids[n++] = b.getId();
             }
         }
-
-        // Only ids travel in the intent — the popup re-reads the barriers from the database, so
-        // whichever action (call or webhook) each one carries is always the current one.
-        long[] ids = new long[nearby.size()];
-        for (int i = 0; i < nearby.size(); i++) {
-            ids[i] = nearby.get(i).getId();
-        }
-
-        Intent popupIntent = new Intent(this, BarrierPopupActivity.class);
-        popupIntent.putExtra("barrier_id", primary.getId());
-        popupIntent.putExtra("barrier_name", primary.getName());
-        popupIntent.putExtra("nearby_ids", ids);
-        popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        return popupIntent;
-    }
-
-    /** Posts the heads-up / full-screen popup notification. Returns whether it can actually reach
-     *  the user (notifications enabled and the popup channel not blocked). */
-    private boolean showPopupFullScreenNotification(Barrier barrier, Intent popupIntent) {
-        NotificationManager manager = getSystemService(NotificationManager.class);
-        if (manager == null) {
-            return false;
-        }
-
-        PendingIntent fullScreenPi = PendingIntent.getActivity(
-                this, (int) barrier.getId(), popupIntent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Notification n = new NotificationCompat.Builder(this, POPUP_CHANNEL_ID)
-                .setContentTitle(getString(R.string.popup_title_window, barrier.getName()))
-                .setContentText(BarrierAction.describeTarget(barrier))
-                .setSmallIcon(R.drawable.ic_notification)
-                .setPriority(NotificationCompat.PRIORITY_MAX)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
-                .setFullScreenIntent(fullScreenPi, true)
-                .setContentIntent(fullScreenPi)
-                .setAutoCancel(true)
-                // Outlives the popup's own countdown, so the notification is never the thing that
-                // takes the question away while it is still on screen.
-                .setTimeoutAfter(35_000L)
-                .build();
-
-        manager.notify(POPUP_NOTIFICATION_ID, n);
-        return popupNotificationsDeliverable(manager);
-    }
-
-    private boolean popupNotificationsDeliverable(NotificationManager manager) {
-        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) {
-            return false;
-        }
-        NotificationChannel channel = manager.getNotificationChannel(POPUP_CHANNEL_ID);
-        return channel != null && channel.getImportance() != NotificationManager.IMPORTANCE_NONE;
+        return BarrierQuestion.ask(this, primary, kind, java.util.Arrays.copyOf(ids, n));
     }
 
     @Override

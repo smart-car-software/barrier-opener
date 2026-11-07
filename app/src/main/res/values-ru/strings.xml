@@ -141,31 +141,14 @@
     <string name="popup_nearby_header">Также в зоне:</string>
     <string name="popup_close_title_window">Закрыть шлагбаум %s?</string>
     <string name="settings_title">Настройки</string>
-    <string name="settings_cluster_popup">Всплывашка на приборке</string>
-    <string name="settings_cluster_popup_hint">Вопрос показывается на приборке, под подсказкой навигатора, а не на главном экране. Если дисплея приборки нет, всплывашка появится на главном экране, как раньше.</string>
-    <string name="settings_wheel_keys">Отвечать кнопками руля ⏮ ⏭ ⏯</string>
-    <string name="settings_wheel_keys_hint">⏮ / ⏭ — выбор, ⏯ — нажать. Нужны root и включённый ADB по сети (как для MConfig+); в первый раз головное устройство спросит, разрешить ли отладку.</string>
-    <string name="settings_mute_media">Не управлять музыкой этими кнопками, пока висит вопрос</string>
-    <string name="settings_mute_media_hint">Музыка продолжает играть, но не переключается этими кнопками, пока висит вопрос. Root не нужен: на это время приложение забирает медиакнопки у плеера.</string>
-    <string name="settings_check_root_running">Проверяю… если на экране спросят, разрешите отладку.</string>
-    <string name="settings_check_root_ok">Root через ADB работает.</string>
-    <string name="settings_check_root_failed">Root недоступен: %1$s</string>
+    <string name="settings_notify_service">Всплывашки</string>
+    <string name="settings_notify_installed">Car Notification Service установлен: вопросы идут через него — на приборку и главный экран, с ответом кнопками руля.</string>
+    <string name="settings_notify_missing">Car Notification Service не установлен: вопросы показываются здесь, на главном экране. Установите его, чтобы всплывашки были на приборке с ответом кнопками руля.</string>
     <string name="settings_log_server">Сервер логов</string>
-    <string name="settings_log_server_hint">Куда кнопка «Отправить логи» на экране «Руль и приборка» шлёт журнал и логи приложения (VictoriaLogs). Достаточно указать хост.</string>
+    <string name="settings_log_server_hint">Куда кнопка «Отправить логи» шлёт журнал и логи приложения (VictoriaLogs). Достаточно указать хост.</string>
     <string name="settings_log_url">Адрес сервера</string>
     <string name="settings_log_user">Логин</string>
     <string name="settings_log_password">Пароль</string>
-
-    <!-- Диагностика руля и экрана водителя (диагностическая сборка). -->
-    <string name="car_diag_title">Руль и приборка</string>
-    <string name="car_diag_hint">Нажмите «Лог кнопок руля» и понажимайте кнопки — каждое нажатие появится ниже с тем, что оно делает во всплывашке. «Забрать медиакнопки у плеера» проверяет, что музыка не реагирует на них, пока висит вопрос.</string>
-    <string name="car_diag_no_keys">Нажатий пока нет.</string>
-    <string name="car_diag_copy">Скопировать отчёт</string>
-    <string name="car_diag_media_on">Забрать медиакнопки у плеера (тест)</string>
-    <string name="car_diag_media_off">Вернуть медиакнопки плееру</string>
-    <string name="car_diag_root_inputimpl">Лог кнопок руля (root через ADB)</string>
-    <string name="car_diag_copied">Отчёт скопирован</string>
-    <string name="car_diag_share">Поделиться отчётом</string>
     <string name="logs_send">Отправить логи</string>
     <string name="logs_sending">Отправляю логи…</string>
     <string name="logs_sent">Логи отправлены: %1$d строк</string>

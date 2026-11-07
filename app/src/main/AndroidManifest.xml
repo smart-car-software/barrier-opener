@@ -46,6 +46,13 @@
     <uses-feature android:name="android.hardware.location.network" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <!-- Car Notification Service shows the popups (cluster, wheel, queue); see NotifyClient. With
+         targetSdk 31 another package is invisible unless listed: both the lookup and the
+         broadcast would fail silently. -->
+    <queries>
+        <package android:name="com.smartcar.notify" />
+    </queries>
+
     <!--
       usesCleartextTraffic: barrier webhooks usually point at a home-network address
       (http://192.168.x.x:8123/api/webhook/…), which Android 9+ blocks by default. HTTPS is still
@@ -91,12 +98,6 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
-        <!-- Steering-wheel and driver's-screen diagnostics (diagnostic build), opened from About. -->
-        <activity
-            android:name=".CarDiagnosticsActivity"
-            android:exported="false"
-            android:parentActivityName=".AboutActivity" />
-
         <!-- Popup Dialog Activity. setShowWhenLocked()/setTurnScreenOn() are called in onCreate
              rather than declared in the manifest so the activity behaves correctly even when
              launched on top of an unlocked screen. -->
@@ -106,6 +107,12 @@
             android:launchMode="singleInstance"
             android:taskAffinity=""
             android:theme="@style/Theme.BarrierOpener.Popup" />
+
+        <!-- Car Notification Service's answers. Not exported: the service fires our own
+             PendingIntent, which runs as us. -->
+        <receiver
+            android:name=".NotifyReplyReceiver"
+            android:exported="false" />
 
         <service
             android:name=".LocationService"
