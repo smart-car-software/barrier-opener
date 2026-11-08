@@ -27,7 +27,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "barrieropener.db";
-    private static final int DATABASE_VERSION = 11; // Incremented version for the closing radius
+    private static final int DATABASE_VERSION = 12; // Incremented version for a close delay in seconds
 
     // Table name
     private static final String TABLE_BARRIERS = "barriers";
@@ -56,6 +56,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String KEY_API_BASE_URL = "api_base_url";
     private static final String KEY_API_TOKEN = "api_token";
     private static final String KEY_CLOSE_RADIUS = "close_radius";
+    private static final String KEY_CLOSE_DELAY_SECONDS = "close_delay_seconds";
 
     // Create table SQL
     private static final String CREATE_TABLE_BARRIERS = "CREATE TABLE " + TABLE_BARRIERS +
@@ -81,7 +82,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_STARTUP_WAIT_WARMUP + " INTEGER DEFAULT 0," +
             KEY_API_BASE_URL + " TEXT," +
             KEY_API_TOKEN + " TEXT," +
-            KEY_CLOSE_RADIUS + " REAL" +
+            KEY_CLOSE_RADIUS + " REAL," +
+            KEY_CLOSE_DELAY_SECONDS + " INTEGER" +
             ")";
 
     /** Column order used by every read below; keeps cursor indices and the projection in sync. */
@@ -91,7 +93,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             KEY_WEBHOOK_URL, KEY_WEBHOOK_SECRET, KEY_CLOSE_ON_DEPARTURE, KEY_CLOSE_ON_TIMER,
             KEY_CLOSE_DELAY_MINUTES, KEY_CLOSE_URL, KEY_CLOSE_SECRET, KEY_CLOSE_ON_PARK,
             KEY_STARTUP_WAIT_BELT, KEY_STARTUP_WAIT_WARMUP, KEY_API_BASE_URL, KEY_API_TOKEN,
-            KEY_CLOSE_RADIUS
+            KEY_CLOSE_RADIUS, KEY_CLOSE_DELAY_SECONDS
     };
 
     public DatabaseHelper(Context context) {
@@ -163,6 +165,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             // detection radius", so existing barriers close exactly where they did before.
             db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_RADIUS + " REAL");
         }
+        if (oldVersion < 12) {
+            // Migration to 12 - the close delay in seconds, so it can go below a minute. NULL reads
+            // as "close_delay_minutes × 60", so existing timers fire exactly when they did before.
+            db.execSQL("ALTER TABLE " + TABLE_BARRIERS + " ADD COLUMN " + KEY_CLOSE_DELAY_SECONDS
+                    + " INTEGER");
+        }
     }
 
     /** Fills the shared column set; used by both insert and update. */
@@ -182,7 +190,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(KEY_CLOSE_ON_DEPARTURE, barrier.isCloseOnDeparture() ? 1 : 0);
         values.put(KEY_CLOSE_ON_TIMER, barrier.isCloseOnTimer() ? 1 : 0);
         values.put(KEY_CLOSE_ON_PARK, barrier.isCloseOnPark() ? 1 : 0);
-        values.put(KEY_CLOSE_DELAY_MINUTES, barrier.getCloseDelayMinutes());
+        // The minutes column is kept filled (rounded up, never 0) for a build that predates seconds.
+        values.put(KEY_CLOSE_DELAY_MINUTES, Math.max(1, (barrier.getCloseDelaySeconds() + 59) / 60));
+        values.put(KEY_CLOSE_DELAY_SECONDS, barrier.getCloseDelaySeconds());
         values.put(KEY_CLOSE_URL, barrier.getCloseUrl());
         values.put(KEY_CLOSE_SECRET, barrier.getCloseSecret());
         values.put(KEY_STARTUP_WAIT_BELT, barrier.isStartupWaitForBelt() ? 1 : 0);
@@ -212,8 +222,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         barrier.setWebhookSecret(cursor.getString(11));
         barrier.setCloseOnDeparture(cursor.getInt(12) != 0);
         barrier.setCloseOnTimer(cursor.getInt(13) != 0);
-        if (!cursor.isNull(14)) {
-            barrier.setCloseDelayMinutes(cursor.getInt(14));
+        if (!cursor.isNull(23)) {
+            barrier.setCloseDelaySeconds(cursor.getInt(23));
+        } else if (!cursor.isNull(14)) {
+            barrier.setCloseDelaySeconds(cursor.getInt(14) * 60);
         }
         barrier.setCloseUrl(cursor.getString(15));
         barrier.setCloseSecret(cursor.getString(16));

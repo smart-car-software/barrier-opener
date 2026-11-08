@@ -79,6 +79,8 @@ public class LocationService extends Service {
     private final Set<Long> closeChecksInFlight = new HashSet<>();
     /** Gate-api barriers whose "is it already open?" check is in flight, by id. */
     private final Set<Long> openChecksInFlight = new HashSet<>();
+    /** The last journalled state of each gate waiting to close; see {@link #traceClose}. */
+    private final Map<Long, String> closeTrace = new java.util.HashMap<>();
     private Location lastLocation;
     /** True until the startup question has been asked, or its window has run out. */
     private boolean startupPromptPending;
@@ -107,6 +109,12 @@ public class LocationService extends Service {
         locationManager = new LocationManager(this);
         gearMonitor = new GearMonitor(this);
         hostReachability = new HostReachability();
+        // A gate opened before a restart is still waiting to close; say so, or its question later
+        // seems to come from nowhere — and its absence, from nothing.
+        for (Map.Entry<Long, Long> e : pendingClose.all().entrySet()) {
+            DebugLog.i(TAG, "Waiting to close barrier " + e.getKey() + ", opened "
+                    + (System.currentTimeMillis() - e.getValue()) / 1000 + " s ago");
+        }
         // Armed here rather than in onStartCommand: MainActivity re-issues startForegroundService
         // on every resume, and re-arming there would greet the driver with an "open the gate?"
         // popup every time they came back to the app while parked at home.
@@ -452,23 +460,47 @@ public class LocationService extends Service {
         for (Barrier b : barriers) {
             Long openedAt = pending.get(b.getId());
             if (openedAt == null) {
+                closeTrace.remove(b.getId()); // Asked, answered or cleared: the next opening starts afresh.
                 continue;
             }
             if (!b.isClosable()) {
                 // Closing was switched off after the gate was opened; drop the stale entry.
+                DebugLog.i(TAG, b.getName() + ": closing switched off; no longer waiting to close");
                 pendingClose.clear(b.getId());
+                closeTrace.remove(b.getId());
                 continue;
             }
             double distance = distanceFrom(location, b);
             // Note this fix before judging: the one that puts the car at the gate may be the same
             // one the departure rule needs to know about.
             pendingClose.noteDistance(b.getId(), distance);
+            double closest = pendingClose.closest(b.getId());
+            traceClose(b, openedAt, now, distance, closest);
             CloseResolver.Reason reason = CloseResolver.evaluate(b, openedAt, now, distance,
-                    pendingClose.closest(b.getId()));
+                    closest);
             if (reason != null) {
                 offerClose(b, reason);
             }
         }
+    }
+
+    /**
+     * Journals where a gate waiting to close stands, each time that changes — not every fix, or
+     * the journal would hold nothing else. The numbers go with it, so a departure that never fired
+     * shows whether the car ever had a fix inside the closing radius.
+     */
+    private void traceClose(Barrier b, long openedAt, long now, double distance, double closest) {
+        CloseResolver.DeparturePhase phase = CloseResolver.departurePhase(b, distance, closest);
+        boolean inZone = distance >= 0 && distance <= b.getDetectionRadius();
+        String state = phase + (b.isCloseOnTimer() ? (inZone ? "/in zone" : "/out of zone") : "");
+        if (state.equals(closeTrace.get(b.getId()))) {
+            return;
+        }
+        closeTrace.put(b.getId(), state);
+        DebugLog.i(TAG, b.getName() + " waiting to close: " + state
+                + " (distance " + Math.round(distance) + " m, closest " + Math.round(closest)
+                + " m, closing radius " + Math.round(b.getCloseRadiusMeters()) + " m, zone "
+                + Math.round(b.getDetectionRadius()) + " m, " + (now - openedAt) / 1000 + " s since opening)");
     }
 
     /**
@@ -478,6 +510,8 @@ public class LocationService extends Service {
      */
     private void offerClose(Barrier barrier, CloseResolver.Reason reason) {
         if (!hostReachability.isReadyFor(barrier, true)) {
+            DebugLog.i(TAG, barrier.getName() + ": time to close (" + reason
+                    + "), checking the host first");
             // Park is an event, not a state: re-running the periodic check would not bring it back,
             // so the retry is bound to this barrier and this reason.
             long barrierId = barrier.getId();
@@ -547,6 +581,7 @@ public class LocationService extends Service {
         triggerClosePopup(barrier);
         // Asked once; the popup clears the entry when the driver answers or it times out.
         pendingClose.clear(barrier.getId());
+        closeTrace.remove(barrier.getId());
     }
 
     /** The endpoint answered after we deferred: put the question now, if it is still pending. */

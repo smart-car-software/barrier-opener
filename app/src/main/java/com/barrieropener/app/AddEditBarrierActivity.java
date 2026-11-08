@@ -81,9 +81,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
     private static final int DEFAULT_RADIUS = 50; // meters
     private static final int MAX_HEADING = 359; // degrees (0 and 360 are equivalent)
     private static final int DEFAULT_HEADING = 0; // degrees
-    private static final int MIN_CLOSE_DELAY_MIN = 1;
     private static final int MIN_CLOSE_RADIUS = 5; // meters: about a car length past the gate
-    private static final int MAX_CLOSE_DELAY_MIN = 30;
 
     private EditText editName, editPhone, editWebhookUrl, editWebhookSecret, editLatitude, editLongitude;
     private EditText editCloseUrl, editCloseSecret;
@@ -230,15 +228,12 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         editCloseUrl = findViewById(R.id.editCloseUrl);
         editCloseSecret = findViewById(R.id.editCloseSecret);
 
-        seekCloseDelay.setMax(MAX_CLOSE_DELAY_MIN - MIN_CLOSE_DELAY_MIN);
-        seekCloseDelay.setProgress(Barrier.DEFAULT_CLOSE_DELAY_MINUTES - MIN_CLOSE_DELAY_MIN);
-        textCloseDelay.setText(getString(R.string.duration_minutes,
-                Barrier.DEFAULT_CLOSE_DELAY_MINUTES));
+        seekCloseDelay.setMax(CloseDelaySteps.maxIndex());
+        showCloseDelay(Barrier.DEFAULT_CLOSE_DELAY_SECONDS);
         seekCloseDelay.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                textCloseDelay.setText(getString(R.string.duration_minutes,
-                        progress + MIN_CLOSE_DELAY_MIN));
+                textCloseDelay.setText(describeDelay(CloseDelaySteps.secondsAt(progress)));
             }
 
             @Override
@@ -389,6 +384,18 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
      * trigger that can never fire is the one outcome worth ruling out. Everywhere else the hints
      * stay hidden.
      */
+    private void showCloseDelay(int seconds) {
+        int index = CloseDelaySteps.indexOf(seconds);
+        seekCloseDelay.setProgress(index);
+        textCloseDelay.setText(describeDelay(CloseDelaySteps.secondsAt(index)));
+    }
+
+    /** "10 s" under a minute, "3 min" from there on: the slider never lands between minutes. */
+    private String describeDelay(int seconds) {
+        return seconds < 60 ? getString(R.string.duration_seconds, seconds)
+                : getString(R.string.duration_minutes, seconds / 60);
+    }
+
     private void showCarApiSupport() {
         int visibility = GearMonitor.isSupportedOnDevice(this) ? View.GONE : View.VISIBLE;
         textParkStatus.setVisibility(visibility);
@@ -420,7 +427,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         barrier.setCloseOnPark(switchCloseOnPark.isChecked());
         barrier.setStartupWaitForBelt(switchStartupWaitBelt.isChecked());
         barrier.setStartupWaitForWarmUp(switchStartupWaitWarmUp.isChecked());
-        barrier.setCloseDelayMinutes(seekCloseDelay.getProgress() + MIN_CLOSE_DELAY_MIN);
+        barrier.setCloseDelaySeconds(CloseDelaySteps.secondsAt(seekCloseDelay.getProgress()));
         barrier.setCloseRadius(currentCloseRadiusMeters());
         barrier.setCloseUrl(closeUrl);
         barrier.setCloseSecret(closeSecret);
@@ -721,10 +728,7 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
             switchCloseOnPark.setChecked(currentBarrier.isCloseOnPark());
             switchStartupWaitBelt.setChecked(currentBarrier.isStartupWaitForBelt());
             switchStartupWaitWarmUp.setChecked(currentBarrier.isStartupWaitForWarmUp());
-            int delay = Math.max(MIN_CLOSE_DELAY_MIN,
-                    Math.min(MAX_CLOSE_DELAY_MIN, currentBarrier.getCloseDelayMinutes()));
-            seekCloseDelay.setProgress(delay - MIN_CLOSE_DELAY_MIN);
-            textCloseDelay.setText(getString(R.string.duration_minutes, delay));
+            showCloseDelay(currentBarrier.getCloseDelaySeconds());
             closeDelayContainer.setVisibility(
                     currentBarrier.isCloseOnTimer() ? View.VISIBLE : View.GONE);
             // A barrier saved before the setting existed shows the radius it has been using.

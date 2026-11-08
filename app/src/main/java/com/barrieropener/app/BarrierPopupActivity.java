@@ -474,6 +474,8 @@ public class BarrierPopupActivity extends AppCompatActivity {
     private void armClosingIfConfigured() {
         if (primaryBarrier != null && primaryBarrier.isClosable()) {
             new PendingCloseStore(this).markOpened(primaryBarrier.getId());
+            DebugLog.i(TAG, primaryBarrier.getName() + " opened; will ask to close on "
+                    + CloseResolver.describeTriggers(primaryBarrier));
         }
     }
 

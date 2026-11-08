@@ -34,7 +34,7 @@ public class CloseResolverTest {
         b.setDetectionRadius(50);
         b.setCloseOnDeparture(onDeparture);
         b.setCloseOnTimer(onTimer);
-        b.setCloseDelayMinutes(delayMinutes);
+        b.setCloseDelaySeconds(delayMinutes * 60);
         return b;
     }
 
@@ -113,6 +113,52 @@ public class CloseResolverTest {
         assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 179_000L, 0, 0));
         assertEquals(CloseResolver.Reason.TIMER,
                 CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 180_000L, 0, 0));
+    }
+
+    @Test
+    public void departurePhase_followsTheCarThroughTheGate() {
+        Barrier b = webhookBarrier(true, false, 3);
+        b.setCloseRadius(15);
+        assertEquals(CloseResolver.DeparturePhase.NO_FIX, CloseResolver.departurePhase(b, -1, -1));
+        assertEquals(CloseResolver.DeparturePhase.APPROACHING, CloseResolver.departurePhase(b, 40, 40));
+        assertEquals(CloseResolver.DeparturePhase.AT_THE_GATE, CloseResolver.departurePhase(b, 8, 8));
+        // Within the margin of the radius on the way out: still at the gate.
+        assertEquals(CloseResolver.DeparturePhase.AT_THE_GATE, CloseResolver.departurePhase(b, 19, 8));
+        assertEquals(CloseResolver.DeparturePhase.DEPARTED, CloseResolver.departurePhase(b, 21, 8));
+    }
+
+    @Test
+    public void departurePhase_callsOutACarThatNeverHadAFixAtTheGate() {
+        // Passed between two fixes: nearest seen was 18 m against a 15 m radius, now 40 m away.
+        Barrier b = webhookBarrier(true, false, 3);
+        b.setCloseRadius(15);
+        assertEquals(CloseResolver.DeparturePhase.AWAY_NEVER_AT_THE_GATE,
+                CloseResolver.departurePhase(b, 40, 18));
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 1_000L, 40, 18));
+    }
+
+    @Test
+    public void departurePhase_offWhenDepartureIsOff() {
+        assertEquals(CloseResolver.DeparturePhase.OFF,
+                CloseResolver.departurePhase(webhookBarrier(false, true, 3), 10, 10));
+    }
+
+    @Test
+    public void describeTriggers_namesEachEnabledTrigger() {
+        Barrier b = webhookBarrier(true, true, 3);
+        b.setCloseRadius(15);
+        b.setCloseDelaySeconds(10);
+        b.setCloseOnPark(true);
+        assertEquals("departure within 15 m, timer 10 s, park", CloseResolver.describeTriggers(b));
+    }
+
+    @Test
+    public void timer_takesADelayUnderAMinute() {
+        Barrier b = webhookBarrier(false, true, 3);
+        b.setCloseDelaySeconds(10);
+        assertNull(CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 9_999L, 0, 0));
+        assertEquals(CloseResolver.Reason.TIMER,
+                CloseResolver.evaluate(b, OPENED_AT, OPENED_AT + 10_000L, 0, 0));
     }
 
     @Test

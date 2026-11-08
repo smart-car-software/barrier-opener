@@ -72,6 +72,10 @@ public class NotifyReplyReceiver extends BroadcastReceiver {
             // As the popup's "Yes": only a barrier that asked for closing triggers arms them.
             if (barrier.isClosable()) {
                 new PendingCloseStore(context).markOpened(barrier.getId());
+                DebugLog.i(TAG, barrier.getName() + " opened; will ask to close on "
+                        + CloseResolver.describeTriggers(barrier));
+            } else {
+                DebugLog.i(TAG, barrier.getName() + " opened; no closing configured");
             }
         }
     }

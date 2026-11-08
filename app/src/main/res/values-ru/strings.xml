@@ -69,6 +69,7 @@
     <string name="distance_meters">%d м</string>
     <string name="angle_degrees">%d°</string>
     <string name="duration_minutes">%d мин</string>
+    <string name="duration_seconds">%d с</string>
 
     <!-- Form Fields -->
     <string name="hint_name">Название</string>

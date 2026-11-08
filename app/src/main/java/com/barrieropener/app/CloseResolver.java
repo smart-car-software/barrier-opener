@@ -33,7 +33,7 @@ package com.barrieropener.app;
  *       small radius safe — the open question is put far out, and without that rule the car would
  *       count as "departed" the moment it said yes. The margin is hysteresis, not distance: it only
  *       has to outlast GPS jitter around the boundary.</li>
- *   <li><b>Timer</b> — the configured number of minutes has passed since opening <i>and</i> the car
+ *   <li><b>Timer</b> — the configured delay (10 s to 30 min) has passed since opening <i>and</i> the car
  *       is still inside the zone. That is the case it exists for: the car drove in and stayed
  *       (parked inside), or GPS never reported the departure.</li>
  *   <li><b>Park</b> — the driver shifted into Park inside the zone, so the car has arrived and
@@ -63,7 +63,67 @@ public final class CloseResolver {
         PARK
     }
 
+    /**
+     * Where the departure trigger stands, for the journal. Logged on every change: "it didn't ask
+     * when I drove off" has several quite different causes — no fix, never a fix inside the
+     * closing radius as the car rolled through, a host out of reach — and only the order of these
+     * tells them apart afterwards.
+     */
+    public enum DeparturePhase {
+        /** Departure is off for this barrier. */
+        OFF,
+        /** No fix to measure from. */
+        NO_FIX,
+        /** Not yet inside the closing radius since opening. */
+        APPROACHING,
+        /** Inside the closing radius (or within the margin of it): at the gate. */
+        AT_THE_GATE,
+        /** Was at the gate, now past the radius and margin: the trigger fires. */
+        DEPARTED,
+        /**
+         * Outside the closing radius and margin without ever having had a fix inside it: the car
+         * went through between two fixes, or the radius is too small — departure will never fire.
+         */
+        AWAY_NEVER_AT_THE_GATE
+    }
+
     private CloseResolver() {}
+
+    /** @see #evaluate for the arguments */
+    public static DeparturePhase departurePhase(Barrier barrier, double distanceM, double closestM) {
+        if (barrier == null || !barrier.isClosable() || !barrier.isCloseOnDeparture()) {
+            return DeparturePhase.OFF;
+        }
+        if (distanceM < 0) {
+            return DeparturePhase.NO_FIX;
+        }
+        double closeRadius = barrier.getCloseRadiusMeters();
+        boolean wasAtTheGate = closestM >= 0 && closestM <= closeRadius;
+        boolean beyond = distanceM > closeRadius + DEPARTURE_MARGIN_M;
+        if (wasAtTheGate) {
+            return beyond ? DeparturePhase.DEPARTED : DeparturePhase.AT_THE_GATE;
+        }
+        // Never closer than the radius: further than radius + margin and still receding is the
+        // case to call out; anything nearer is still on the way in.
+        return beyond && closestM >= 0 && distanceM > closestM + DEPARTURE_MARGIN_M
+                ? DeparturePhase.AWAY_NEVER_AT_THE_GATE : DeparturePhase.APPROACHING;
+    }
+
+    /** "departure within 15 m, timer 10 s, park" — what a just-opened barrier will close on. */
+    public static String describeTriggers(Barrier barrier) {
+        StringBuilder s = new StringBuilder();
+        if (barrier.isCloseOnDeparture()) {
+            s.append("departure within ").append(Math.round(barrier.getCloseRadiusMeters())).append(" m");
+        }
+        if (barrier.isCloseOnTimer()) {
+            s.append(s.length() > 0 ? ", " : "").append("timer ")
+                    .append(barrier.getCloseDelaySeconds()).append(" s");
+        }
+        if (barrier.isCloseOnPark()) {
+            s.append(s.length() > 0 ? ", " : "").append("park");
+        }
+        return s.length() > 0 ? s.toString() : "nothing";
+    }
 
     /**
      * The Park trigger: the gearbox says the journey is over. Time doesn't enter into it, but
@@ -106,7 +166,7 @@ public final class CloseResolver {
         }
         if (barrier.isCloseOnTimer() && isInZone(barrier, distanceM)) {
             long elapsed = nowMs - openedAtMs;
-            if (elapsed >= barrier.getCloseDelayMinutes() * 60_000L) {
+            if (elapsed >= barrier.getCloseDelaySeconds() * 1000L) {
                 return Reason.TIMER;
             }
         }

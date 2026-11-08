@@ -20,7 +20,6 @@ package com.barrieropener.app;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.Log;
 
 import java.util.Map;
 import java.util.Set;
@@ -83,10 +82,15 @@ public class HostReachability {
                     ? GateApiClient.isReachable(url, TIMEOUT_MS)
                     : WebhookHelper.isHostReachable(url, TIMEOUT_MS);
             inFlight.remove(url);
+            // Into the journal, host only (the path of a webhook is its secret): a question that
+            // never comes because the gate's host is out of reach looks, from the driver's seat,
+            // exactly like a trigger that never fired.
             if (!reachable) {
+                DebugLog.i(TAG, "Host not answering: " + hostOf(url)
+                        + (closing ? " (closing question waits)" : " (question waits)"));
                 return;
             }
-            Log.d(TAG, "Host is reachable: " + url);
+            DebugLog.i(TAG, "Host is reachable: " + hostOf(url));
             reachableUntil.put(url, SystemClock.elapsedRealtime() + CACHE_MS);
             if (onReady != null) {
                 mainHandler.post(onReady);
@@ -98,6 +102,15 @@ public class HostReachability {
     public boolean isReadyFor(Barrier barrier, boolean closing) {
         String url = BarrierAction.urlFor(barrier, closing);
         return url == null || isReady(url);
+    }
+
+    private static String hostOf(String url) {
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            return uri.getHost() + (uri.getPort() > 0 ? ":" + uri.getPort() : "");
+        } catch (Exception e) {
+            return "(unparsable address)";
+        }
     }
 
     public void shutdown() {

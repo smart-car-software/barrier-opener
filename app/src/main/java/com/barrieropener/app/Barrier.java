@@ -19,6 +19,7 @@ package com.barrieropener.app;
 
 public class Barrier {
     public static final int DEFAULT_CLOSE_DELAY_MINUTES = 3;
+    public static final int DEFAULT_CLOSE_DELAY_SECONDS = DEFAULT_CLOSE_DELAY_MINUTES * 60;
 
     /** What the app does when the user confirms opening the barrier. */
     public enum ActionType {
@@ -91,11 +92,12 @@ public class Barrier {
 
     /** Ask to close after the car has driven away from the barrier. */
     private boolean closeOnDeparture;
-    /** Ask to close once {@link #closeDelayMinutes} have passed since opening. */
+    /** Ask to close once {@link #closeDelaySeconds} have passed since opening. */
     private boolean closeOnTimer;
     /** Ask to close when the driver shifts into Park — i.e. the car has arrived and stopped. */
     private boolean closeOnPark;
-    private int closeDelayMinutes = DEFAULT_CLOSE_DELAY_MINUTES;
+    /** Seconds, not minutes: a gate the car drives straight through wants asking in 10–20 s. */
+    private int closeDelaySeconds = DEFAULT_CLOSE_DELAY_SECONDS;
     /** Hold the startup "open it?" question until the driver has buckled up. */
     private boolean startupWaitForBelt;
     /** Hold the startup "open it?" question until the engine has come down from its fast idle. */
@@ -152,7 +154,7 @@ public class Barrier {
     public boolean isCloseOnDeparture() { return closeOnDeparture; }
     public boolean isCloseOnTimer() { return closeOnTimer; }
     public boolean isCloseOnPark() { return closeOnPark; }
-    public int getCloseDelayMinutes() { return closeDelayMinutes; }
+    public int getCloseDelaySeconds() { return closeDelaySeconds; }
     public boolean isStartupWaitForBelt() { return startupWaitForBelt; }
     public boolean isStartupWaitForWarmUp() { return startupWaitForWarmUp; }
     public String getCloseUrl() { return closeUrl; }
@@ -195,7 +197,7 @@ public class Barrier {
     public void setCloseOnDeparture(boolean closeOnDeparture) { this.closeOnDeparture = closeOnDeparture; }
     public void setCloseOnTimer(boolean closeOnTimer) { this.closeOnTimer = closeOnTimer; }
     public void setCloseOnPark(boolean closeOnPark) { this.closeOnPark = closeOnPark; }
-    public void setCloseDelayMinutes(int closeDelayMinutes) { this.closeDelayMinutes = closeDelayMinutes; }
+    public void setCloseDelaySeconds(int closeDelaySeconds) { this.closeDelaySeconds = closeDelaySeconds; }
     public void setStartupWaitForBelt(boolean startupWaitForBelt) { this.startupWaitForBelt = startupWaitForBelt; }
     public void setStartupWaitForWarmUp(boolean startupWaitForWarmUp) { this.startupWaitForWarmUp = startupWaitForWarmUp; }
     public void setCloseUrl(String closeUrl) { this.closeUrl = closeUrl; }
