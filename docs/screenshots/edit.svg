@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 600" width="1600" height="600" font-family="Roboto, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <!-- Copyright © 2026 smart-car-software. GPL-3.0-or-later.
+       Mock-up of the edit screen (AddEditBarrierActivity, landscape, dark theme): the map with the
+       detection radius (blue) and the closing radius (orange), the form on the right. Not a
+       screenshot: the map is a sketch and the values are made up. -->
+  <title>Редактирование шлагбаума</title>
+  <defs>
+    <clipPath id="screen"><rect width="1600" height="600" rx="18"/></clipPath>
+    <clipPath id="map"><rect width="800" height="600"/></clipPath>
+  </defs>
+  <g clip-path="url(#screen)">
+    <rect width="1600" height="600" fill="#15171C"/>
+
+    <!-- Map -->
+    <g clip-path="url(#map)">
+      <rect width="800" height="600" fill="#E9E5DC"/>
+      <rect x="40" y="40" width="250" height="180" rx="6" fill="#D9D3C7"/>
+      <rect x="520" y="60" width="240" height="150" rx="6" fill="#D9D3C7"/>
+      <rect x="60" y="390" width="230" height="170" rx="6" fill="#CFE3C4"/>
+      <rect x="520" y="400" width="250" height="160" rx="6" fill="#D9D3C7"/>
+      <g stroke="#FFFFFF" stroke-width="40" fill="none">
+        <path d="M-20 300 H 820"/><path d="M400 -20 V 620"/>
+      </g>
+      <g stroke="#F6D77A" stroke-width="40" fill="none"><path d="M400 -20 V 300"/></g>
+      <circle cx="400" cy="300" r="190" fill="#0000FF" fill-opacity="0.13" stroke="#0000FF" stroke-opacity="0.33" stroke-width="3"/>
+      <circle cx="400" cy="300" r="70" fill="#FF6600" fill-opacity="0.07" stroke="#FF6600" stroke-opacity="0.4" stroke-width="3"/>
+      <!-- Barrier and its direction -->
+      <path d="M400 250 l18 34 h-36z" fill="#1A73E8"/>
+      <circle cx="400" cy="300" r="14" fill="#FFD400" stroke="#1F2128" stroke-width="4"/>
+      <!-- Map controls -->
+      <g fill="#FFFFFF" stroke="#D3D7DC">
+        <circle cx="748" cy="200" r="28"/><circle cx="748" cy="268" r="28"/>
+        <circle cx="748" cy="336" r="28"/><circle cx="748" cy="404" r="28"/>
+      </g>
+      <g stroke="#1F2128" stroke-width="3.5" stroke-linecap="round" fill="none">
+        <path d="M736 200 h24 M748 188 v24"/><path d="M736 268 h24"/>
+        <circle cx="744" cy="332" r="9"/><path d="M751 339 l9 9"/>
+        <circle cx="748" cy="404" r="8"/><path d="M748 386 v8 M748 414 v8 M730 404 h8 M758 404 h8"/>
+      </g>
+    </g>
+
+    <!-- Toolbar and form -->
+    <rect x="800" width="800" height="600" fill="#15171C"/>
+    <path d="M832 48 l-12 12 l12 12 M820 60 h26" stroke="#F1F3F4" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="870" y="70" font-size="28" font-weight="600" fill="#F1F3F4">Редактировать шлагбаум</text>
+
+    <rect x="824" y="104" width="752" height="64" rx="8" fill="none" stroke="#B8BCC2" stroke-width="2"/>
+    <rect x="840" y="94" width="104" height="20" fill="#15171C"/>
+    <text x="848" y="110" font-size="16" fill="#B8BCC2">Название</text>
+    <text x="844" y="146" font-size="24" fill="#F1F3F4">Дом</text>
+
+    <text x="824" y="202" font-size="18" fill="#B8BCC2">Способ открытия</text>
+    <rect x="824" y="214" width="752" height="52" rx="26" fill="none" stroke="#5F6368" stroke-width="2"/>
+    <path d="M1325 214 h225 a26 26 0 0 1 0 52 h-225z" fill="#4A4320"/>
+    <path d="M1074 214 v52 M1325 214 v52" stroke="#5F6368" stroke-width="2"/>
+    <text x="949" y="248" font-size="20" fill="#F1F3F4" text-anchor="middle">Звонок</text>
+    <text x="1200" y="248" font-size="20" fill="#F1F3F4" text-anchor="middle">HTTP-запрос</text>
+    <path d="M1376 240 l7 7 l13 -14" stroke="#FFE97A" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <text x="1462" y="248" font-size="20" font-weight="600" fill="#FFE97A" text-anchor="middle">Gate API</text>
+
+    <rect x="824" y="292" width="752" height="64" rx="8" fill="none" stroke="#B8BCC2" stroke-width="2"/>
+    <rect x="840" y="282" width="156" height="20" fill="#15171C"/>
+    <text x="848" y="298" font-size="16" fill="#B8BCC2">Адрес Gate API</text>
+    <text x="844" y="334" font-size="22" fill="#F1F3F4">https://gate-api.example.com</text>
+
+    <text x="824" y="396" font-size="20" fill="#F1F3F4">Радиус обнаружения</text>
+    <text x="1576" y="396" font-size="20" font-weight="600" fill="#F1F3F4" text-anchor="end">80 м</text>
+    <rect x="824" y="412" width="752" height="6" rx="3" fill="#3A3D45"/>
+    <rect x="824" y="412" width="300" height="6" rx="3" fill="#FFD400"/>
+    <circle cx="1124" cy="415" r="12" fill="#FFD400"/>
+
+    <text x="824" y="466" font-size="22" font-weight="700" fill="#F1F3F4">Закрытие</text>
+    <text x="824" y="508" font-size="20" fill="#F1F3F4">Спрашивать при отъезде</text>
+    <rect x="1508" y="486" width="68" height="36" rx="18" fill="#FFD400"/><circle cx="1558" cy="504" r="13" fill="#1F2128"/>
+    <text x="824" y="560" font-size="20" fill="#F1F3F4">Спрашивать при переводе в паркинг</text>
+    <rect x="1508" y="538" width="68" height="36" rx="18" fill="#FFD400"/><circle cx="1558" cy="556" r="13" fill="#1F2128"/>
+  </g>
+</svg>
