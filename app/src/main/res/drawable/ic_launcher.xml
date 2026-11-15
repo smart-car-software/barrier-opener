@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2026 smart-car-software contributors
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  -->
+
+<!-- The launcher icon: a raised barrier on the cluster's slate, in its accent blue — the same
+     tile as route-suggest's and Car Notification Service's. The boom's stripes are cut out
+     (evenOdd), so the glyph stays one colour like theirs. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF283442"
+        android:pathData="M4,0h16a4,4 0,0 1,4 4v16a4,4 0,0 1,-4 4h-16a4,4 0,0 1,-4 -4v-16a4,4 0,0 1,4 -4z" />
+    <group
+        android:scaleX="0.7"
+        android:scaleY="0.7"
+        android:translateX="3.6"
+        android:translateY="3.6">
+        <!-- Base plate and pole. -->
+        <path
+            android:fillColor="#FF4FB7F0"
+            android:pathData="M2.5,20h8v2.5h-8zM5.5,11h2v9h-2z" />
+        <!-- The pivot. -->
+        <path
+            android:fillColor="#FF4FB7F0"
+            android:pathData="M6.5,7.3a2.7,2.7 0,1 1,0 5.4a2.7,2.7 0,1 1,0 -5.4z" />
+        <!-- The boom, raised 25° about the pivot, with three slanted stripes cut out. -->
+        <group
+            android:pivotX="6.5"
+            android:pivotY="10"
+            android:rotation="-25">
+            <path
+                android:fillColor="#FF4FB7F0"
+                android:fillType="evenOdd"
+                android:pathData="M8.5,8.5h14v3h-14zM11.6,8.5h1.9l-1.1,3h-1.9zM15.6,8.5h1.9l-1.1,3h-1.9zM19.6,8.5h1.9l-1.1,3h-1.9z" />
+        </group>
+    </group>
+</vector>
