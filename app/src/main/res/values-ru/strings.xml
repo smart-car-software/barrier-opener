@@ -156,6 +156,12 @@
     <string name="logs_send_failed">Логи не отправлены: %1$s</string>
     <string name="logs_no_server">Логи не отправлены: в настройках нет сервера логов</string>
     <string name="settings_update">Обновление</string>
+    <string name="notify_install">Установить Car Notification Service</string>
+    <string name="notify_install_title">Car Notification Service</string>
+    <string name="notify_install_message">С Car Notification Service вопрос о шлагбауме приходит на приборку, а ответить можно кнопками руля. Сейчас он не установлен. Скачать с GitHub и установить?</string>
+    <string name="notify_downloading">Скачиваю Car Notification Service…</string>
+    <string name="notify_installed_now">Car Notification Service установлен. Откройте его один раз, чтобы разрешить показ поверх окон.</string>
+    <string name="notify_allow_unknown">Разрешите установку из этого приложения и нажмите «Установить» ещё раз</string>
     <string name="upd_pill">Доступна %1$s</string>
     <string name="upd_available">Доступна версия %1$s</string>
     <string name="upd_install">Обновить до %1$s</string>

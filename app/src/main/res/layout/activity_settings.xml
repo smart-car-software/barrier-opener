@@ -57,6 +57,16 @@
                     android:lineSpacingMultiplier="1.15"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp" />
+
+                <Button
+                    android:id="@+id/btnInstallNotify"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/notify_install"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <LinearLayout style="@style/Panel">

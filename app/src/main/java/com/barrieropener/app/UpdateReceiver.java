@@ -26,6 +26,8 @@ import android.widget.Toast;
 /** Android's installer answers here: shows its confirmation, or tells how it ended. */
 public final class UpdateReceiver extends BroadcastReceiver {
     private static final String TAG = "Updater";
+    /** Which package the session installs: this app (an update) or another one. */
+    static final String EXTRA_PACKAGE = "package";
 
     @Override
     public void onReceive(Context c, Intent i) {
@@ -44,7 +46,14 @@ public final class UpdateReceiver extends BroadcastReceiver {
             }
             return;
         }
+        String pkg = i.getStringExtra(EXTRA_PACKAGE);
         if (status == PackageInstaller.STATUS_SUCCESS) {
+            if (pkg != null && !pkg.equals(c.getPackageName())) {
+                // Another app (Car Notification Service): we live on to say so.
+                DebugLog.i(TAG, pkg + " installed");
+                Toast.makeText(c, R.string.notify_installed_now, Toast.LENGTH_LONG).show();
+                return;
+            }
             // Rarely heard: the install ends this process. BootReceiver logs the new version.
             DebugLog.i(TAG, "update installed");
             return;

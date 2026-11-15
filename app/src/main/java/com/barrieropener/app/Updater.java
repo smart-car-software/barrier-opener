@@ -48,8 +48,9 @@ import java.util.regex.Pattern;
  * bringing one in only for updates would put an "allow debugging?" question on the unit.
  */
 final class Updater {
-    static final String LATEST =
-            "https://api.github.com/repos/smart-car-software/barrier-opener/releases/latest";
+    static final String SELF = "smart-car-software/barrier-opener";
+    /** Car Notification Service: offered for install from its own releases, the same way. */
+    static final String NOTIFY = "smart-car-software/car-notification-service";
     private static final int CONNECT_MS = 10_000;
 
     static final class Release {
@@ -99,9 +100,14 @@ final class Updater {
         return null;
     }
 
-    /** The latest release, or null when it carries no APK. Blocking. */
+    /** This app's latest release, or null when it carries no APK. Blocking. */
     static Release latest() throws IOException {
-        HttpURLConnection h = open(LATEST, 15_000);
+        return latest(SELF);
+    }
+
+    /** {@code repo}'s («owner/name») latest release, or null when it carries no APK. Blocking. */
+    static Release latest(String repo) throws IOException {
+        HttpURLConnection h = open("https://api.github.com/repos/" + repo + "/releases/latest", 15_000);
         h.setRequestProperty("Accept", "application/vnd.github+json");
         try {
             int code = h.getResponseCode();
@@ -123,7 +129,11 @@ final class Updater {
 
     /** Downloads the APK into the app's cache. Blocking. */
     static File download(Context c, Release rel) throws IOException {
-        File out = new File(c.getCacheDir(), "update.apk");
+        return download(c, rel, "update.apk");
+    }
+
+    static File download(Context c, Release rel, String name) throws IOException {
+        File out = new File(c.getCacheDir(), name);
         HttpURLConnection h = open(rel.apkUrl, 60_000);
         try (InputStream in = h.getInputStream(); OutputStream os = new FileOutputStream(out)) {
             copy(in, os);
@@ -136,18 +146,23 @@ final class Updater {
 
     /** Android's own installer: it asks the driver to confirm, {@link UpdateReceiver} hears the end. */
     static void installWithPrompt(Context c, File apk) throws IOException {
+        installWithPrompt(c, apk, c.getPackageName());
+    }
+
+    /** The same for another app ({@code pkg}), e.g. Car Notification Service. */
+    static void installWithPrompt(Context c, File apk, String pkg) throws IOException {
         PackageInstaller pi = c.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams p = new PackageInstaller.SessionParams(
                 PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-        p.setAppPackageName(c.getPackageName());
+        p.setAppPackageName(pkg);
         int id = pi.createSession(p);
         try (PackageInstaller.Session s = pi.openSession(id)) {
             try (InputStream in = new FileInputStream(apk);
-                 OutputStream os = s.openWrite("barrier-opener.apk", 0, apk.length())) {
+                 OutputStream os = s.openWrite(pkg + ".apk", 0, apk.length())) {
                 copy(in, os);
                 s.fsync(os);
             }
-            Intent done = new Intent(c, UpdateReceiver.class);
+            Intent done = new Intent(c, UpdateReceiver.class).putExtra(UpdateReceiver.EXTRA_PACKAGE, pkg);
             PendingIntent pend = PendingIntent.getBroadcast(c, id, done,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
             s.commit(pend.getIntentSender());

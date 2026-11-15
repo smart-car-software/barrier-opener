@@ -91,10 +91,9 @@ final class UpdateSection {
             draw();
             return;
         }
-        if (now) {
-            busy = true;
-            draw();
-        }
+        // Drawn before the answer too: the screen says the version while GitHub is asked.
+        busy = now;
+        draw();
         WORKER.execute(() -> {
             String err = "";
             Updater.Release found = null;

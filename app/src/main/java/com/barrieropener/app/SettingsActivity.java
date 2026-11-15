@@ -18,6 +18,7 @@
 package com.barrieropener.app;
 
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -46,6 +47,7 @@ public class SettingsActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
         notifyStatus = findViewById(R.id.textNotifyStatus);
 
+        findViewById(R.id.btnInstallNotify).setOnClickListener(v -> NotifyInstall.install(this));
         update = new UpdateSection(this, findViewById(R.id.textUpdateStatus),
                 findViewById(R.id.textUpdateNotes), findViewById(R.id.btnUpdate), null, null);
         update.check(false);
@@ -74,8 +76,10 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        notifyStatus.setText(NotifyClient.installed(this)
+        boolean installed = NotifyClient.installed(this);
+        notifyStatus.setText(installed
                 ? R.string.settings_notify_installed : R.string.settings_notify_missing);
+        findViewById(R.id.btnInstallNotify).setVisibility(installed ? View.GONE : View.VISIBLE);
     }
 
     /** Saved on leaving the screen, whatever way it is left. */

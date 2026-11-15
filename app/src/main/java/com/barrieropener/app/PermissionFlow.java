@@ -38,6 +38,7 @@ import androidx.core.content.ContextCompat;
  *   2. ACCESS_BACKGROUND_LOCATION (separately, with rationale, on Android 10+).
  *   3. SYSTEM_ALERT_WINDOW (overlay) — required to show popup from background service.
  *   4. Battery optimizations whitelist (asked once, dismissible).
+ *   5. Car Notification Service, when it is not installed (asked once, see {@link NotifyInstall}).
  */
 public class PermissionFlow {
 
@@ -74,6 +75,10 @@ public class PermissionFlow {
         }
         if (!askedBatteryOnce() && !isBatteryUnrestricted()) {
             askBatteryOptimizations();
+            return;
+        }
+        if (NotifyInstall.shouldAsk(activity)) {
+            NotifyInstall.ask(activity, () -> { });
         }
     }
 
@@ -155,7 +160,7 @@ public class PermissionFlow {
                         // Some OEMs block this intent; nothing more we can do here.
                     }
                 })
-                .setNegativeButton(R.string.action_later, null)
+                .setNegativeButton(R.string.action_later, (d, w) -> start())
                 .show();
     }
 
