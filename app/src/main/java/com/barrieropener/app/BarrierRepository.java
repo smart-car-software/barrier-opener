@@ -89,7 +89,5 @@ public class BarrierRepository {
     public static void notifyChanged(Context context) {
         Intent intent = new Intent(ACTION_BARRIERS_CHANGED).setPackage(context.getPackageName());
         context.sendBroadcast(intent);
-        // The cluster menu's list of gates too, so an edit shows there at once.
-        GateMenuTab.publish(context);
     }
 }

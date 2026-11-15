@@ -47,4 +47,13 @@
     <color name="status_ok">@color/ok</color>
     <color name="status_warning">@color/warn</color>
     <color name="status_error">@color/danger</color>
+
+    <!-- The gates' list on the cluster: the colours of the cluster's own panel there, as
+         route-suggest's menu and Car Notification Service's cards. -->
+    <color name="cluster_panel">#D9283442</color>
+    <color name="cluster_panel_rim">#FF55657A</color>
+    <color name="cluster_text">#FFF2F5F8</color>
+    <color name="cluster_text_dim">#FF7D8896</color>
+    <color name="cluster_accent">#FF4FB7F0</color>
+    <color name="cluster_accent_fill">#594FB7F0</color>
 </resources>

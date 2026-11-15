@@ -46,6 +46,8 @@ public class LocationService extends Service {
     private static final int NOTIFICATION_ID = 1;
     public static final int POPUP_NOTIFICATION_ID = 2;
     public static final String ACTION_STOP = "com.barrieropener.app.STOP";
+    /** From the settings: show the gates on the cluster for 30 s ({@link ClusterMenu#trial}). */
+    public static final String ACTION_MENU_TRIAL = "com.barrieropener.app.MENU_TRIAL";
 
     private static volatile boolean _isStarted = false;
 
@@ -81,6 +83,7 @@ public class LocationService extends Service {
     private final Set<Long> openChecksInFlight = new HashSet<>();
     /** The last journalled state of each gate waiting to close; see {@link #traceClose}. */
     private final Map<Long, String> closeTrace = new java.util.HashMap<>();
+    private ClusterMenu clusterMenu;
     private Location lastLocation;
     /** The last fix, for the cluster menu's order of gates (nearest first); null before one. */
     static volatile Location lastKnown;
@@ -121,8 +124,9 @@ public class LocationService extends Service {
         // on every resume, and re-arming there would greet the driver with an "open the gate?"
         // popup every time they came back to the app while parked at home.
         armStartupPrompt();
-        // The gates on the cluster menu: Car Notification Service may have started before us.
-        GateMenuTab.publish(this);
+        // The gates on the cluster menu's phone tab; nothing on a unit without ECarX.
+        clusterMenu = new ClusterMenu(this);
+        clusterMenu.start();
     }
 
     @Override
@@ -132,6 +136,10 @@ public class LocationService extends Service {
             stopForeground(true);
             stopSelf();
             return START_NOT_STICKY;
+        }
+
+        if (intent != null && ACTION_MENU_TRIAL.equals(intent.getAction())) {
+            clusterMenu.trial();
         }
 
         DebugLog.i(TAG, "Service started");
@@ -650,6 +658,7 @@ public class LocationService extends Service {
         // Everything on the ticker, not just the tick: deferred closing retries ride on it too.
         closeTicker.removeCallbacksAndMessages(null);
         gearMonitor.stop();
+        clusterMenu.stop();
         hostReachability.shutdown();
         locationManager.stopLocationUpdates();
         repository.unregisterInvalidator();
