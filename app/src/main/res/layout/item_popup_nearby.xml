@@ -4,6 +4,7 @@
   -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -28,10 +29,11 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
         android:background="@drawable/button_green_background"
+        app:backgroundTint="@null"
         android:paddingHorizontal="24dp"
         android:paddingVertical="10dp"
         android:text="@string/call"
-        android:textColor="@android:color/white"
+        android:textColor="@color/on_accent"
         android:textSize="20sp"
         android:textStyle="bold" />
 

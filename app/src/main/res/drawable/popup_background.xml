@@ -16,6 +16,8 @@
   ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- A panel like every other, the rim catching a bit of the accent. -->
     <solid android:color="@color/surface" />
-    <corners android:radius="28dp" />
+    <stroke android:width="1dp" android:color="@color/outline" />
+    <corners android:radius="22dp" />
 </shape>

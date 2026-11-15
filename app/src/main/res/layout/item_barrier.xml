@@ -124,6 +124,6 @@
         app:icon="@android:drawable/ic_menu_call"
         app:iconGravity="textStart"
         app:iconPadding="0dp"
-        app:iconTint="@color/brand_charcoal" />
+        app:iconTint="@color/on_accent" />
 
 </LinearLayout>

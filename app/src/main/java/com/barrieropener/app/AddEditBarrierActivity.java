@@ -19,7 +19,6 @@ package com.barrieropener.app;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.PointF;
@@ -356,8 +355,9 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         // Disable unnecessary gestures
         map.setRotateGesturesEnabled(false);
         map.setTiltGesturesEnabled(false);
-        // Follow the system theme: at night a daylight-white map is the brightest thing in the car.
-        map.setNightModeEnabled(isNightTheme());
+        // The app has one dark look, day and night; a daylight-white map would be the brightest
+        // thing in the car at night and would break that look by day.
+        map.setNightModeEnabled(true);
 
         // Initialize map objects
         mapObjects = map.getMapObjects().addCollection();
@@ -410,11 +410,6 @@ public class AddEditBarrierActivity extends AppCompatActivity implements InputLi
         // manifest is not enough, and without the grant every read fails with a SecurityException.
         ActivityCompat.requestPermissions(this,
                 new String[]{GearMonitor.PERMISSION_POWERTRAIN}, POWERTRAIN_PERMISSION_REQUEST_CODE);
-    }
-
-    private boolean isNightTheme() {
-        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
-                == Configuration.UI_MODE_NIGHT_YES;
     }
 
     /**

@@ -17,6 +17,8 @@
   -->
 
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@android:color/holo_blue_dark" />
-    <corners android:radius="8dp" />
+    <!-- A quiet action: accent text on a dim fill. -->
+    <solid android:color="@color/accent_dim" />
+    <stroke android:width="1dp" android:color="@color/accent_glow" />
+    <corners android:radius="14dp" />
 </shape>

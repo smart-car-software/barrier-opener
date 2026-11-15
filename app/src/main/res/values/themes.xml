@@ -17,18 +17,65 @@
   -->
 
 <resources>
-    <style name="Theme.BarrierOpener" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand_yellow</item>
-        <item name="colorOnPrimary">@color/brand_charcoal</item>
-        <item name="colorPrimaryContainer">@color/brand_yellow</item>
-        <item name="colorOnPrimaryContainer">@color/brand_charcoal</item>
-        <item name="colorSecondary">@color/action_blue</item>
-        <item name="colorOnSecondary">#FFFFFFFF</item>
+    <!-- The look shared with route-suggest and Car Notification Service: one dark theme, day and
+         night, a cyan accent on night blue (see colors.xml). -->
+    <style name="Theme.BarrierOpener" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorOnPrimary">@color/on_accent</item>
+        <item name="colorPrimaryContainer">@color/accent_dim</item>
+        <item name="colorOnPrimaryContainer">@color/accent</item>
+        <item name="colorSecondary">@color/accent</item>
+        <item name="colorOnSecondary">@color/on_accent</item>
+        <item name="colorSecondaryContainer">@color/accent_dim</item>
+        <item name="colorOnSecondaryContainer">@color/accent</item>
+        <item name="colorError">@color/danger</item>
         <item name="android:colorBackground">@color/background</item>
         <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceContainer">@color/surface</item>
+        <item name="colorSurfaceContainerHigh">@color/surface</item>
+        <item name="colorSurfaceContainerHighest">@color/surface_variant</item>
         <item name="colorOnSurface">@color/text_primary</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:statusBarColor">@color/background</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:windowBackground">@drawable/screen_background</item>
+        <item name="android:statusBarColor">@color/bg_top</item>
+        <item name="android:navigationBarColor">@color/bg_bottom</item>
+        <item name="materialButtonStyle">@style/Button.BarrierOpener</item>
+    </style>
+
+    <!-- Plain buttons are the quiet action of route-suggest: accent text on a dim pill. -->
+    <style name="Button.BarrierOpener" parent="Widget.Material3.Button.TonalButton">
+        <item name="backgroundTint">@color/accent_dim</item>
+        <item name="android:textColor">@color/accent</item>
+        <item name="android:textStyle">bold</item>
+        <item name="cornerRadius">12dp</item>
+    </style>
+
+    <!-- A section of a screen: a panel with a cold rim. -->
+    <style name="Panel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">14dp</item>
+        <item name="android:background">@drawable/card_background</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:paddingTop">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
+    </style>
+
+    <!-- A panel's heading: small caps, spaced, in the accent — like the cluster's labels. -->
+    <style name="PanelLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@color/accent</item>
+        <item name="android:textSize">13sp</item>
     </style>
 
     <style name="Theme.BarrierOpener.Popup" parent="Theme.BarrierOpener">

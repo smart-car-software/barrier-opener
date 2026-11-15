@@ -9,7 +9,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@drawable/screen_background">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -19,7 +19,7 @@
             android:id="@+id/toolbarLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/background"
+            android:background="@color/bg_top"
             app:elevation="0dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -605,13 +605,13 @@
                     android:layout_marginHorizontal="20dp"
                     android:layout_marginBottom="16dp"
                     android:text="@string/action_save"
-                    android:textColor="@color/brand_charcoal"
+                    android:textColor="@color/on_accent"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    app:backgroundTint="@color/brand_yellow"
+                    app:backgroundTint="@color/accent"
                     app:cornerRadius="16dp"
                     app:icon="@drawable/ic_check_bold"
-                    app:iconTint="@color/brand_charcoal"
+                    app:iconTint="@color/on_accent"
                     app:iconSize="24dp"
                     app:iconGravity="textStart" />
             </LinearLayout>

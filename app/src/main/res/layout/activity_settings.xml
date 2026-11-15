@@ -16,11 +16,12 @@
   ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 
+<!-- Panels with an accent label each, as on route-suggest's screen. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@drawable/screen_background"
     android:orientation="vertical">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -39,124 +40,128 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="20dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="16dp">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_notify_service"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp" />
+            <LinearLayout style="@style/Panel">
 
-            <TextView
-                android:id="@+id/textNotifyStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
+                <TextView
+                    style="@style/PanelLabel"
+                    android:text="@string/settings_notify_service" />
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/settings_update"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp" />
-
-            <TextView
-                android:id="@+id/textUpdateStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/textUpdateNotes"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:maxLines="8"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnUpdate"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/upd_check"
-                android:textAllCaps="false" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="@string/settings_log_server"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_log_server_hint"
-                android:textColor="@color/text_secondary"
-                android:textSize="14sp" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="@string/settings_log_url">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editLogUrl"
+                <TextView
+                    android:id="@+id/textNotifyStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textUri"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:lineSpacingMultiplier="1.15"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="@string/settings_log_user">
+            <LinearLayout style="@style/Panel">
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editLogUser"
+                <TextView
+                    style="@style/PanelLabel"
+                    android:text="@string/settings_update" />
+
+                <TextView
+                    android:id="@+id/textUpdateStatus"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp" />
 
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:hint="@string/settings_log_password"
-                app:endIconMode="password_toggle">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editLogPassword"
+                <TextView
+                    android:id="@+id/textUpdateNotes"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textPassword"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_marginTop="6dp"
+                    android:lineSpacingMultiplier="1.15"
+                    android:maxLines="8"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
 
-            <Button
-                android:id="@+id/btnSendLogs"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/logs_send"
-                android:textAllCaps="false" />
+                <Button
+                    android:id="@+id/btnUpdate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/upd_check"
+                    android:textAllCaps="false"
+                    android:textSize="16sp" />
+            </LinearLayout>
 
+            <LinearLayout style="@style/Panel">
+
+                <TextView
+                    style="@style/PanelLabel"
+                    android:text="@string/settings_log_server" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:lineSpacingMultiplier="1.15"
+                    android:text="@string/settings_log_server_hint"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/settings_log_url">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editLogUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/settings_log_user">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editLogUser"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/settings_log_password"
+                    app:endIconMode="password_toggle">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/editLogPassword"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPassword"
+                        android:maxLines="1" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <Button
+                    android:id="@+id/btnSendLogs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/logs_send"
+                    android:textAllCaps="false"
+                    android:textSize="16sp" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
