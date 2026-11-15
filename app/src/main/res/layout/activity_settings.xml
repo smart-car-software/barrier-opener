@@ -67,6 +67,17 @@
                     android:textAllCaps="false"
                     android:textSize="16sp"
                     android:visibility="gone" />
+
+                <!-- The gates on the cluster menu's phone tab: shown there for 30 s. -->
+                <Button
+                    android:id="@+id/btnMenuTrial"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/menu_trial"
+                    android:textAllCaps="false"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <LinearLayout style="@style/Panel">

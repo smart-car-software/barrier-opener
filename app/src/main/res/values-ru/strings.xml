@@ -161,6 +161,11 @@
     <string name="notify_install_message">С Car Notification Service вопрос о шлагбауме приходит на приборку, а ответить можно кнопками руля. Сейчас он не установлен. Скачать с GitHub и установить?</string>
     <string name="notify_downloading">Скачиваю Car Notification Service…</string>
     <string name="notify_installed_now">Car Notification Service установлен. Откройте его один раз, чтобы разрешить показ поверх окон.</string>
+    <string name="menu_title">Шлагбаумы</string>
+    <string name="menu_open">Открыть: %1$s</string>
+    <string name="menu_close">Закрыть: %1$s</string>
+    <string name="menu_empty">Шлагбаумов пока нет</string>
+    <string name="menu_trial">Показать шлагбаумы в меню приборки (30 с)</string>
     <string name="notify_allow_unknown">Разрешите установку из этого приложения и нажмите «Установить» ещё раз</string>
     <string name="upd_pill">Доступна %1$s</string>
     <string name="upd_available">Доступна версия %1$s</string>

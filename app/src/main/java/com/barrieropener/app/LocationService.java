@@ -82,6 +82,8 @@ public class LocationService extends Service {
     /** The last journalled state of each gate waiting to close; see {@link #traceClose}. */
     private final Map<Long, String> closeTrace = new java.util.HashMap<>();
     private Location lastLocation;
+    /** The last fix, for the cluster menu's order of gates (nearest first); null before one. */
+    static volatile Location lastKnown;
     /** True until the startup question has been asked, or its window has run out. */
     private boolean startupPromptPending;
     private long startupPromptDeadline;
@@ -119,6 +121,8 @@ public class LocationService extends Service {
         // on every resume, and re-arming there would greet the driver with an "open the gate?"
         // popup every time they came back to the app while parked at home.
         armStartupPrompt();
+        // The gates on the cluster menu: Car Notification Service may have started before us.
+        GateMenuTab.publish(this);
     }
 
     @Override
@@ -220,6 +224,7 @@ public class LocationService extends Service {
     private void checkNearbyBarriers(Location location) {
         List<Barrier> barriers = repository.getAll();
         lastLocation = location;
+        lastKnown = location;
         triggerState.releaseFarBarriers(location.getLatitude(), location.getLongitude(), barriers);
         approachTracker.update(barriers, location.getLatitude(), location.getLongitude());
         checkPendingCloses(barriers, location);

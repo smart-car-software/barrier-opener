@@ -153,6 +153,11 @@
     <string name="notify_install_message">With Car Notification Service the question about the gate comes to the cluster and is answered with the steering wheel. It is not installed. Download it from GitHub and install?</string>
     <string name="notify_downloading">Downloading Car Notification Service…</string>
     <string name="notify_installed_now">Car Notification Service installed. Open it once to allow showing over other apps.</string>
+    <string name="menu_title">Barriers</string>
+    <string name="menu_open">Open: %1$s</string>
+    <string name="menu_close">Close: %1$s</string>
+    <string name="menu_empty">No barriers yet</string>
+    <string name="menu_trial">Show the barriers in the cluster menu (30 s)</string>
     <string name="notify_allow_unknown">Allow installing from this app, then tap «Install» again</string>
     <string name="upd_pill">%1$s available</string>
     <string name="upd_available">Version %1$s is available</string>

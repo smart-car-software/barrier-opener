@@ -115,6 +115,20 @@
             android:name=".NotifyReplyReceiver"
             android:exported="false" />
 
+        <!-- The cluster menu's list of gates: a pressed row, by its PendingIntent only. -->
+        <receiver
+            android:name=".GateMenuTab$Pick"
+            android:exported="false" />
+
+        <!-- Car Notification Service asks for that list again (by package); it only resends it. -->
+        <receiver
+            android:name=".GateMenuTab$Wanted"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.smartcar.notify.action.MENU_WANTED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Android's installer answers our own update session here. -->
         <receiver
             android:name=".UpdateReceiver"

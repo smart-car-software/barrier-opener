@@ -34,6 +34,9 @@ final class NotifyClient {
     static final String PACKAGE = "com.smartcar.notify";
     private static final String RECEIVER = "com.smartcar.notify.RequestReceiver";
     private static final String ACTION_SHOW = "com.smartcar.notify.action.SHOW";
+    private static final String ACTION_MENU_TAB = "com.smartcar.notify.action.MENU_TAB";
+    private static final String ACTION_MENU_TRIAL = "com.smartcar.notify.action.MENU_TRIAL";
+    static final String ACTION_MENU_WANTED = "com.smartcar.notify.action.MENU_WANTED";
 
     private NotifyClient() {
     }
@@ -84,6 +87,35 @@ final class NotifyClient {
         } catch (RuntimeException e) {
             DebugLog.w("NotifyClient", "Could not send " + id, e);
             return false;
+        }
+    }
+
+    /**
+     * The list in the cluster's menu (the service's docs/API.md, «Список в меню приборки»).
+     * {@code pick}: {@code FLAG_MUTABLE}, the service writes the pressed row's key into it.
+     */
+    static void menuTab(Context c, String tab, int dimTab, String title, String[] rows,
+                        String[] keys, String empty, PendingIntent pick) {
+        Intent i = base(ACTION_MENU_TAB, null);
+        i.putExtra("tab", tab);
+        i.putExtra("dim_tab", dimTab);
+        i.putExtra("title", title);
+        i.putExtra("options", rows);
+        i.putExtra("keys", keys);
+        i.putExtra("empty", empty);
+        i.putExtra("pick", pick);
+        send(c, i);
+    }
+
+    static void menuTrial(Context c, String tab) {
+        send(c, base(ACTION_MENU_TRIAL, null).putExtra("tab", tab));
+    }
+
+    private static void send(Context c, Intent i) {
+        try {
+            c.sendBroadcast(i);
+        } catch (RuntimeException e) {
+            DebugLog.w("NotifyClient", "Could not send " + i.getAction(), e);
         }
     }
 

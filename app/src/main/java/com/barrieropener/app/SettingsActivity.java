@@ -48,6 +48,7 @@ public class SettingsActivity extends AppCompatActivity {
         notifyStatus = findViewById(R.id.textNotifyStatus);
 
         findViewById(R.id.btnInstallNotify).setOnClickListener(v -> NotifyInstall.install(this));
+        findViewById(R.id.btnMenuTrial).setOnClickListener(v -> GateMenuTab.trial(this));
         update = new UpdateSection(this, findViewById(R.id.textUpdateStatus),
                 findViewById(R.id.textUpdateNotes), findViewById(R.id.btnUpdate), null, null);
         update.check(false);
@@ -80,6 +81,7 @@ public class SettingsActivity extends AppCompatActivity {
         notifyStatus.setText(installed
                 ? R.string.settings_notify_installed : R.string.settings_notify_missing);
         findViewById(R.id.btnInstallNotify).setVisibility(installed ? View.GONE : View.VISIBLE);
+        findViewById(R.id.btnMenuTrial).setVisibility(installed ? View.VISIBLE : View.GONE);
     }
 
     /** Saved on leaving the screen, whatever way it is left. */
