@@ -99,6 +99,9 @@ final class ClusterMenu {
     /** Bumped on each show and hide: a trial's timer for an old show does nothing. */
     private int generation;
     private long flashUntil;
+    /** The list is on screen (the window itself stays attached while the menu is subscribed). */
+    private boolean up;
+    private boolean attachedOnCluster;
 
     ClusterMenu(Context c) {
         this.c = c.getApplicationContext();
@@ -148,12 +151,15 @@ final class ClusterMenu {
                 c.registerReceiver(keys, f);
                 keysRegistered = true;
             }
+            // Ahead of the first tab change, so the list is there at once.
+            if (Settings.canDrawOverlays(c) && clusterThere()) attach();
         });
     }
 
     void stop() {
         main.post(() -> {
-            hide();
+            generation++;
+            detach();
             if (keysRegistered) {
                 try {
                     c.unregisterReceiver(keys);
@@ -207,7 +213,7 @@ final class ClusterMenu {
             String a = i.getAction();
             // Route-suggest's menu on the navigation tab gets the same broadcasts: ours only
             // while our list is up.
-            if (a == null || view == null) return;
+            if (a == null || !up) return;
             if (KEY_UP.equals(a)) move(-1);
             else if (KEY_DOWN.equals(a)) move(1);
             else if (KEY_OK.equals(a)) pick();
@@ -224,7 +230,7 @@ final class ClusterMenu {
     /** The barriers changed: new rows while the list is up. */
     void refresh() {
         main.post(() -> {
-            if (view == null) return;
+            if (!up) return;
             String was = selected < rows.keys.size() ? rows.keys.get(selected) : null;
             rows = build();
             int at = was == null ? -1 : rows.keys.indexOf(was);
@@ -246,6 +252,8 @@ final class ClusterMenu {
         first = 0;
         if (!attach()) return;
         draw();
+        view.setVisibility(View.VISIBLE);
+        up = true;
         DebugLog.i(TAG, "Gates shown on the cluster: " + rows.text.size() + " rows"
                 + (forMs > 0 ? " (trial)" : ""));
         if (forMs > 0) main.postDelayed(() -> {
@@ -277,8 +285,18 @@ final class ClusterMenu {
         return GateMenu.rows(entries, c.getString(R.string.menu_open), c.getString(R.string.menu_close));
     }
 
+    /**
+     * The window stays attached, only hidden: made anew on every tab change, it came up a moment
+     * after the unit's own phone screen, which flickered through (seen in the car, v0.18.0).
+     */
     private void hide() {
         generation++;
+        up = false;
+        if (view != null) view.setVisibility(View.GONE);
+    }
+
+    private void detach() {
+        up = false;
         if (view != null && wm != null) {
             try {
                 wm.removeView(view);
@@ -327,11 +345,20 @@ final class ClusterMenu {
         main.postDelayed(this::draw, FLASH_MS);
     }
 
+    private boolean clusterThere() {
+        DisplayManager dm = c.getSystemService(DisplayManager.class);
+        return dm != null && dm.getDisplay(DISPLAY) != null;
+    }
+
     private boolean attach() {
+        // Attached to the unit's own screen while the cluster's display was not there yet
+        // (a test, an early start): move over now that it is.
+        if (view != null && !attachedOnCluster && clusterThere()) detach();
         if (view != null) return true;
         DisplayManager dm = c.getSystemService(DisplayManager.class);
         Display d = dm == null ? null : dm.getDisplay(DISPLAY);
         boolean onCluster = d != null;
+        attachedOnCluster = onCluster;
         if (d == null && dm != null) d = dm.getDisplay(Display.DEFAULT_DISPLAY); // a phone, a test
         if (d == null) return false;
         Context dc = c.createDisplayContext(d);
@@ -339,7 +366,9 @@ final class ClusterMenu {
         view = new LinearLayout(dc);
         view.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(c.getColor(R.color.cluster_panel));
+        // Opaque: the unit draws its own phone screen («Журнал вызовов…») under this window, and
+        // a translucent panel let it show through (seen in the car, v0.18.0).
+        bg.setColor(c.getColor(R.color.cluster_panel_solid));
         bg.setCornerRadius(12);
         bg.setStroke(1, c.getColor(R.color.cluster_panel_rim));
         view.setBackground(bg);
@@ -360,6 +389,7 @@ final class ClusterMenu {
         lp.gravity = Gravity.TOP | Gravity.START;
         lp.x = onCluster ? X : 40;
         lp.y = onCluster ? Y : 40;
+        view.setVisibility(View.GONE); // show() turns it on
         try {
             wm.addView(view, lp);
         } catch (RuntimeException e) {
