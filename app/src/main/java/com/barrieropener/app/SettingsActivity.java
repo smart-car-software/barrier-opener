@@ -28,11 +28,12 @@ import androidx.appcompat.widget.Toolbar;
 
 /**
  * The app-wide settings in {@link AppSettings}: where popups go (Car Notification Service, when
- * installed) and the log server with its "Send logs".
+ * installed), the update from GitHub Releases, and the log server with its "Send logs".
  */
 public class SettingsActivity extends AppCompatActivity {
 
     private TextView notifyStatus;
+    private UpdateSection update;
     private EditText logUrl;
     private EditText logUser;
     private EditText logPassword;
@@ -44,6 +45,10 @@ public class SettingsActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.settingsToolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
         notifyStatus = findViewById(R.id.textNotifyStatus);
+
+        update = new UpdateSection(this, findViewById(R.id.textUpdateStatus),
+                findViewById(R.id.textUpdateNotes), findViewById(R.id.btnUpdate), null, null);
+        update.check(false);
 
         logUrl = findViewById(R.id.editLogUrl);
         logUser = findViewById(R.id.editLogUser);

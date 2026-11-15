@@ -155,6 +155,17 @@
     <string name="logs_sent">Логи отправлены: %1$d строк</string>
     <string name="logs_send_failed">Логи не отправлены: %1$s</string>
     <string name="logs_no_server">Логи не отправлены: в настройках нет сервера логов</string>
+    <string name="settings_update">Обновление</string>
+    <string name="upd_pill">Доступна %1$s</string>
+    <string name="upd_available">Доступна версия %1$s</string>
+    <string name="upd_install">Обновить до %1$s</string>
+    <string name="upd_current">Версия %1$s</string>
+    <string name="upd_check">Проверить обновления</string>
+    <string name="upd_checking">Проверяю…</string>
+    <string name="upd_latest">Установлена последняя версия</string>
+    <string name="upd_error">Не получилось: %1$s</string>
+    <string name="upd_downloading">Скачиваю %1$s…</string>
+    <string name="upd_allow_unknown">Разрешите установку из этого приложения и нажмите «Обновить» ещё раз</string>
 
     <!-- Add/Edit Barrier Screen -->
     <string name="barrier_type">Тип шлагбаума</string>

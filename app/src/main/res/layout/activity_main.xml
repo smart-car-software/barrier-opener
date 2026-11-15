@@ -33,6 +33,20 @@
                 android:textSize="22sp"
                 android:textStyle="bold" />
 
+            <!-- A newer release on GitHub: a tap opens the settings, where «Обновить» is. -->
+            <TextView
+                android:id="@+id/updatePill"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/update_pill_background"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp"
+                android:textColor="@color/brand_charcoal"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
             <ImageButton
                 android:id="@+id/btnSettings"
                 android:layout_width="40dp"

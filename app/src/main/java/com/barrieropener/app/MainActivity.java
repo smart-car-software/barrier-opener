@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private PermissionFlow permissionFlow;
     /** Keeps the gate-api rows' state pills current while the list is on screen; idle otherwise. */
     private GateStatePoller gatePoller;
+    /** Only the «Доступна vX» pill here; the block itself is in the settings. */
+    private UpdateSection updateCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +76,10 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btnSettings).setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class)));
+        TextView pill = findViewById(R.id.updatePill);
+        pill.setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class)));
+        updateCheck = new UpdateSection(this, null, null, null, pill, pill);
         findViewById(R.id.btnAbout).setOnClickListener(v ->
                 startActivity(new Intent(MainActivity.this, AboutActivity.class)));
     }
@@ -105,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
         loadBarriers();
         startLocationServiceIfReady();
         updateStatusPill();
+        updateCheck.check(false);
         gatePoller.start();
     }
 

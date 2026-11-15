@@ -147,6 +147,17 @@
     <string name="logs_sent">Logs sent: %1$d lines</string>
     <string name="logs_send_failed">Logs not sent: %1$s</string>
     <string name="logs_no_server">Logs not sent: no log server in the settings</string>
+    <string name="settings_update">Update</string>
+    <string name="upd_pill">%1$s available</string>
+    <string name="upd_available">Version %1$s is available</string>
+    <string name="upd_install">Update to %1$s</string>
+    <string name="upd_current">Version %1$s</string>
+    <string name="upd_check">Check for updates</string>
+    <string name="upd_checking">Checking…</string>
+    <string name="upd_latest">The latest version is installed</string>
+    <string name="upd_error">Failed: %1$s</string>
+    <string name="upd_downloading">Downloading %1$s…</string>
+    <string name="upd_allow_unknown">Allow installing from this app, then tap «Update» again</string>
 
     <!-- Location Service -->
     <string name="location_timeout">Could not get location: timeout</string>

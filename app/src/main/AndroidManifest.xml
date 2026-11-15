@@ -29,6 +29,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- «Обновить» in the settings: Android's installer, which asks. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Reading the transmission (the Park closing trigger). Only means anything on head units
          that ship the android.car API; everywhere else it is an unknown permission the system
          ignores, and GearMonitor simply reports the feature as unavailable. -->
@@ -114,6 +116,11 @@
             android:name=".NotifyReplyReceiver"
             android:exported="false" />
 
+        <!-- Android's installer answers our own update session here. -->
+        <receiver
+            android:name=".UpdateReceiver"
+            android:exported="false" />
+
         <service
             android:name=".LocationService"
             android:enabled="true"
@@ -134,6 +141,10 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+            <!-- An update from the app ends its process: the service comes back from here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
     </application>
