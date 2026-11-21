@@ -42,7 +42,9 @@ import android.widget.TextView;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The gates in the Monjaro cluster's own menu, on its phone tab (the user's choice: navigation is
@@ -99,6 +101,10 @@ final class ClusterMenu {
     /** Bumped on each show and hide: a trial's timer for an old show does nothing. */
     private int generation;
     private long flashUntil;
+    /** The driver scrolled or pressed since the list came up: keep the cursor on its row. */
+    private boolean moved;
+    /** The last state each gate-api service reported, by base URL; main thread only. */
+    private final Map<String, GateState> gateStates = new HashMap<>();
     /** The list is on screen (the window itself stays attached while the menu is subscribed). */
     private boolean up;
     private boolean attachedOnCluster;
@@ -250,6 +256,8 @@ final class ClusterMenu {
         rows = build();
         selected = 0;
         first = 0;
+        moved = false;
+        fetchStates(gen);
         if (!attach()) return;
         draw();
         view.setVisibility(View.VISIBLE);
@@ -261,6 +269,54 @@ final class ClusterMenu {
         }, forMs);
     }
 
+    /**
+     * Asks each gate-api service once where its gate is, so an open one is offered closing first.
+     * Only on showing the list: the order changes once, a moment after the tab opens, and not under
+     * the driver's thumb after a press. Until the answer (or without one) the app's own memory
+     * decides ({@link GateMenu#isOpen}).
+     */
+    private void fetchStates(int gen) {
+        DatabaseHelper db = new DatabaseHelper(c);
+        List<Barrier> barriers;
+        try {
+            barriers = db.getAllBarriers();
+        } finally {
+            db.close();
+        }
+        Map<String, String> targets = new HashMap<>();
+        for (Barrier b : barriers) {
+            if (b.getActionType() != Barrier.ActionType.GATE_API) continue;
+            String base = GateApiClient.normalizeBaseUrl(b.getApiBaseUrl());
+            if (GateApiClient.isValidBaseUrl(base)) targets.put(base, b.getApiToken());
+        }
+        for (Map.Entry<String, String> t : targets.entrySet()) {
+            GateApiClient.fetchState(t.getKey(), t.getValue(), new GateApiClient.Callback() {
+                @Override
+                public void onSuccess(GateState state) {
+                    gateStates.put(t.getKey(), state);
+                    DebugLog.i(TAG, "Gate state for the cluster: " + state.state);
+                    if (gen != generation || !up) return;
+                    if (moved) {
+                        refresh();
+                    } else {
+                        // The driver has not scrolled yet: the cursor stays on the first row,
+                        // which now is the one that changes the nearest gate's state.
+                        rows = build();
+                        selected = 0;
+                        first = 0;
+                        draw();
+                    }
+                }
+
+                @Override
+                public void onFailure(GateApiClient.Failure failure) {
+                    // The last state, if any, and the app's memory stand in.
+                    DebugLog.i(TAG, "No gate state for the cluster: " + failure);
+                }
+            });
+        }
+    }
+
     /** The rows now: every barrier, the nearest to the last fix first. A small database read. */
     private GateMenu.Rows build() {
         DatabaseHelper db = new DatabaseHelper(c);
@@ -270,6 +326,7 @@ final class ClusterMenu {
         } finally {
             db.close();
         }
+        PendingCloseStore pending = new PendingCloseStore(c);
         Location at = LocationService.lastKnown;
         List<GateMenu.Entry> entries = new ArrayList<>();
         for (Barrier b : barriers) {
@@ -280,7 +337,10 @@ final class ClusterMenu {
                         b.getLatitude(), b.getLongitude(), m);
                 d = m[0];
             }
-            entries.add(new GateMenu.Entry(b.getId(), b.getName(), b.isRequestBased(), d));
+            GateState s = b.getActionType() == Barrier.ActionType.GATE_API
+                    ? gateStates.get(GateApiClient.normalizeBaseUrl(b.getApiBaseUrl())) : null;
+            boolean open = GateMenu.isOpen(s, pending.openedAt(b.getId()) != 0L);
+            entries.add(new GateMenu.Entry(b.getId(), b.getName(), b.isRequestBased(), d, open));
         }
         return GateMenu.rows(entries, c.getString(R.string.menu_open), c.getString(R.string.menu_close));
     }
@@ -310,7 +370,8 @@ final class ClusterMenu {
 
     private void move(int by) {
         if (rows.text.isEmpty()) return;
-        selected = Math.max(0, Math.min(rows.text.size() - 1, selected + by));
+        moved = true;
+        selected =Math.max(0, Math.min(rows.text.size() - 1, selected + by));
         if (selected < first) first = selected;
         if (selected >= first + VISIBLE_ROWS) first = selected - VISIBLE_ROWS + 1;
         draw();
@@ -319,6 +380,7 @@ final class ClusterMenu {
     /** The joystick's press: as the wheel's «Да» to the question about that barrier. */
     private void pick() {
         if (selected >= rows.keys.size()) return;
+        moved = true;
         GateMenu.Command cmd = GateMenu.parse(rows.keys.get(selected));
         if (cmd == null) return;
         // Re-read: the list may have been built before the barrier was edited.

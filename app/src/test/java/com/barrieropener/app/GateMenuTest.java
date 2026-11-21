@@ -48,6 +48,34 @@ public class GateMenuTest {
     }
 
     @Test
+    public void anOpenGate_isOfferedClosingFirst_nearestStillFirst() {
+        GateMenu.Rows r = GateMenu.rows(Arrays.asList(
+                new GateMenu.Entry(1, "Дача", true, 5000, true),
+                new GateMenu.Entry(2, "Дом", true, 30, true),
+                new GateMenu.Entry(3, "Офис", true, 900, false),
+                // A call cannot close: «open» changes nothing for it.
+                new GateMenu.Entry(4, "Шлагбаум", false, 2000, true)), "Открыть: %s", "Закрыть: %s");
+        assertEquals(Arrays.asList("close:2", "open:2", "open:3", "close:3", "open:4",
+                "close:1", "open:1"), r.keys);
+        assertEquals("Закрыть: Дом", r.text.get(0));
+    }
+
+    @Test
+    public void isOpen_gateApiStateWins_elseTheAppsMemory() throws Exception {
+        assertTrue(GateMenu.isOpen(GateState.parse("{\"state\":\"open\"}"), false));
+        assertTrue(GateMenu.isOpen(GateState.parse("{\"state\":\"opening\"}"), false));
+        assertTrue(GateMenu.isOpen(GateState.parse("{\"state\":\"partial\"}"), false));
+        assertFalse(GateMenu.isOpen(GateState.parse("{\"state\":\"closed\"}"), true));
+        assertFalse(GateMenu.isOpen(GateState.parse("{\"state\":\"closing\"}"), true));
+        // Unknown or stale: the app's memory of having opened it.
+        assertTrue(GateMenu.isOpen(GateState.parse("{\"state\":\"unknown\"}"), true));
+        assertFalse(GateMenu.isOpen(
+                GateState.parse("{\"state\":\"open\",\"ha\":\"unreachable\"}"), false));
+        assertTrue(GateMenu.isOpen(null, true));
+        assertFalse(GateMenu.isOpen(null, false));
+    }
+
+    @Test
     public void parse_readsTheKey() {
         GateMenu.Command c = GateMenu.parse("close:12");
         assertEquals(12, c.id);
